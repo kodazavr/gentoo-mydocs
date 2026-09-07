@@ -23,7 +23,7 @@
 
 | Раздел | Описание |
 |--------|----------|
-| [installation/base-system](installation/base-system.md) | Базовая настройка системы: LLVM toolchain, USE-флаги, ccache, mold |
+| [installation/base-system](installation/base-system.md) | Базовая настройка системы: LLVM toolchain, USE-флаги, ccache, lld |
 | [installation/systemd-uki-setup](installation/systemd-uki-setup.md) | Настройка Unified Kernel Image через Dracut |
 | [installation/secure-boot-tpm](installation/secure-boot-tpm.md) | Настройка Secure Boot и TPM 2.0 для автоматической расшифровки LUKS |
 
@@ -49,6 +49,7 @@
 | [hardware/asus-expertbook](hardware/asus-expertbook.md) | Специфика ноутбука ASUS ExpertBook B5402 |
 | [hardware/intel-graphics](hardware/intel-graphics.md) | Драйвер Intel Xe и Vulkan (ANV) |
 | [hardware/cpu-optimization](hardware/cpu-optimization.md) | Оптимизация для Intel Alder Lake (P-cores + E-cores) |
+| [hardware/second-disk](hardware/second-disk.md) | Второй диск: бэкапы (btrbk + borg) и доп. хранилище |
 
 ### 🌐 Сеть
 
@@ -83,11 +84,19 @@
 | [settings/r2modman](settings/r2modman.md) | Интеграция r2modman со Steam (Flatpak) |
 | [settings/scanner-driver](settings/scanner-driver.md) | Настройка сканера отпечатков Elan 04f3:0c77 |
 | [settings/obs-studio](settings/obs-studio.md) | OBS Studio, FFmpeg и настройка кодеков |
+| [settings/perplexity](settings/perplexity.md) | Интеграция Perplexity AppImage в меню приложений |
 | [settings/bolt](settings/bolt.md) | Оптимизация Clang с помощью BOLT для Alder Lake |
 | [settings/firefox](settings/firefox.md) | Firefox: Clang, PGO, Wayland, Profile-sync-daemon |
 | [settings/flatpak](settings/flatpak.md) | Flatpak и Flatseal для изоляции приложений |
 | [settings/nftables-docker-libvirt](settings/nftables-docker-libvirt.md) | Проблема отсутствия интернета на виртуальных машинах из-за правил Docker | 
 | [settings/connect-phone-android](settings/connect-phone-android.md) | Проблема с подключением телефона для передачи данных |
+
+### 🔍 Решение проблем и аудит
+
+| Раздел | Описание |
+|--------|----------|
+| [troubleshooting/system-vs-docs-drift-2026-06-13](troubleshooting/system-vs-docs-drift-2026-06-13.md) | Аудит дрейфа документации vs реальная система |
+| [troubleshooting/configs-review-2026-07-26](troubleshooting/configs-review-2026-07-26.md) | Ревью `configs/etc/portage/` перед LLVM-миграцией |
 
 ### ⚙️ Управление конфигурацией
 
@@ -112,14 +121,15 @@ emerge -av app-admin/chezmoi
 - **Secure Boot** с собственными ключами (sbctl)
 
 ### Компилятор и инструменты
-- **LLVM 23** — основной компилятор с LTO-оптимизациями
-- **BOLT** — профилированная бинарная оптимизация (ускорение до 30%)
-- **mold** — современный линкер
+- **LLVM 22** — основной системный компилятор с LTO-оптимизациями
+- **BOLT** — отключён; вернётся после стабильного релиза LLVM 23 (док `settings/bolt.md` описывает историческое состояние)
+- **lld** — основной линкер (`mold` остаётся для Rust-флагов на P-ядрах)
 - **ccache** — кэширование компиляции
 
 ### Графика
 - **Niri** — тайловый Wayland-композитор
-- **Intel Xe** — современный драйвер для графики Alder Lake
+- **Intel Xe** — целевой драйвер для графики Alder Lake
+- **Intel i915** — драйвер, используемый в текущей системе до перехода на Xe
 - **Zink** — OpenGL через Vulkan
 - **Mesa** с поддержкой VAAPI и Vulkan
 

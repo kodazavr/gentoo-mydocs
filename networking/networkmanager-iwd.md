@@ -9,7 +9,8 @@
 Файл: `/etc/portage/package.use/networkmanager`
 
 ```makefile
-net-misc/networkmanager iwd -wpa_supplicant
+net-misc/networkmanager -iptables -dhcpcd -wext concheck tools connection-sharing iwd audit psl
+net-vpn/networkmanager-openvpn -gtk
 ```
 
 ## 2. Конфигурация NetworkManager

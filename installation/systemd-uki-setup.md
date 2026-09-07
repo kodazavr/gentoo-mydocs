@@ -26,18 +26,25 @@ compress="zstd"
 early_microcode="yes"
 ```
 
-### Драйверы и модули (10-drivers.conf, 20-modules.conf)
+### Драйверы и модули (`10-drivers.conf`, `20-modules.conf`)
 
-Включаем поддержку новой графики Intel Xe, NVMe и системных компонентов для работы с шифрованием.
+Включаем поддержку графики Intel (целевой драйвер — Xe, сейчас загружается i915), NVMe и системных компонентов для работы с шифрованием.
 
 ```conf
-force_drivers+=" xe "
+# Целевой драйвер Xe (отключён до перехода)
+#force_drivers+=" xe "
+
+# Текущий драйвер i915
+add_drivers+=" i915 "
+
 add_drivers+=" nvme "
 
 # systemd в initramfs необходим для интеграции с TPM2
 add_dracutmodules+=" systemd tpm2-tss crypt btrfs "
 omit_dracutmodules+=" network nfs "
 ```
+
+> **Совет**: пока `xe` не стабилен на вашем железе, оставьте `force_drivers` закомментированным и явно добавьте `i915` через `add_drivers`.
 
 ### Настройка UKI и Secure Boot (90-uki.conf)
 
@@ -60,11 +67,16 @@ uefi_secureboot_key="/var/lib/sbctl/keys/db/db.key"
 | Параметр | Описание |
 |----------|----------|
 | `rd.luks.uuid` | UUID вашего зашифрованного раздела. |
-| `rd.luks.options=tpm2-device=auto` | Ключевой момент: автоматический поиск TPM2 для разблокировки LUKS. |
+| `rd.luks.name=...=cryptroot` | Имя mapped-устройства для корневого LUKS. |
+| `rd.luks.options=tpm2-device=auto,discard` | Автоматический поиск TPM2 + `discard` для TRIM. |
 | `root=UUID=...` | UUID файловой системы внутри LUKS контейнера. |
 | `rootflags=subvol=@` | Монтирование конкретного subvolume Btrfs. |
-| `security=apparmor` | Активация AppArmor как основного механизма безопасности. |
-| `lsm=...` | Список активных модулей безопасности (Landlock, BPF, AppArmor). |
+| `rootfstype=btrfs` | Тип корневой файловой системы. |
+| `rw` | Подключение корня на запись. |
+| `quiet` | Подавление лишнего вывода при загрузке. |
+| `audit=1` | Включение аудита ядра. |
+| `apparmor=1 security=apparmor` | Активация AppArmor как основного механизма безопасности. |
+| `lsm=landlock,lockdown,yama,integrity,apparmor,bpf` | Список активных модулей безопасности. |
 
 ## 4. Автоматизация и загрузчик
 
@@ -72,7 +84,12 @@ uefi_secureboot_key="/var/lib/sbctl/keys/db/db.key"
 
 Для полной автоматизации в Gentoo используется sys-kernel/installkernel. Чтобы ядро после сборки само превращалось в UKI и попадало в EFI, убедитесь, что:
 
-1. У sys-kernel/installkernel включены USE-флаги dracut и ukify.
+1. У `sys-kernel/installkernel` включены USE-флаги `systemd-boot ukify dracut uki` и отключены `grub efistub ugrd refind`:
+
+   ```makefile
+   # /etc/portage/package.use/installkernel
+   sys-kernel/installkernel systemd-boot ukify dracut uki -grub -efistub -ugrd -refind
+   ```
 2. Пути к ключам в системе синхронизированы.
 
 > ⚠️ **Важный нюанс**: Если вы используете sbctl, ваши ключи «живут» в `/var/lib/sbctl/`. Файл `/etc/kernel/uki.conf` (используемый ukify) должен ссылаться на те же файлы, что и конфиг Dracut.

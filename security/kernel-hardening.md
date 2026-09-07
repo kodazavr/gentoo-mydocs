@@ -14,7 +14,7 @@
 
 ### 2. sysctl параметры
 
-Настройка в `/etc/sysctl.d/99-security.conf`:
+Настройка в `/etc/sysctl.d/99-hardened-kernel.conf`:
 
 ```conf
 # Включаем Reverse Path Filtering (защита от IP-спуфинга)

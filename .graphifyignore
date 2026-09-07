@@ -1,0 +1,17 @@
+# graphify — exclude generated/tool dirs and secret-like files
+graphify-out/
+.codegraph/
+.codegraphy/
+.history/
+.git/
+# baseline secrets (defensive — none expected in a docs repo)
+**/.env
+**/.env.*
+**/*.pem
+**/*.key
+**/*.p12
+**/*.pfx
+**/*.kdbx
+**/rclone.conf
+**/credentials.json
+**/secrets/**

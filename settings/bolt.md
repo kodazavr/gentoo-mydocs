@@ -1,5 +1,7 @@
 # Оптимизация Clang 23 с помощью BOLT на Gentoo (Alder Lake)
 
+> ⚠️ **Важно**: BOLT **временно не используется** (с 2026-07). Этот документ — историческая справка по настройке BOLT на LLVM 23. Live-слоты LLVM 23/24 убраны из системы; основной toolchain — стабильный LLVM 22 без BOLT. Не применять инструкции «как есть» — требуется свежее профилирование.
+
 Цель: Создание бескомпромиссно быстрого, монолитного C++ компилятора путем применения профилированной бинарной оптимизации (BOLT) для использования в качестве системного компилятора в Gentoo.
 
 ## Итоговые результаты (Бенчмарк сборки LLVM)
@@ -115,26 +117,57 @@ doas rsync -av --progress /home/vladimir/llvm-project/build-profile/ /opt/llvm-b
 
 ### 2. Настройка окружения Portage
 
-Создаем файл конфигурации с минимальным (и полностью рабочим!) набором переменных. Компилятор сам отлично находит системные пути GCC.
+Вместо одного монолитного `package.env` используется директория `/etc/portage/package.env/` и несколько специализированных env-файлов в `/etc/portage/env/`.
 
-Файл: `/etc/portage/env/bolt-compiler`
+Файл: `/etc/portage/env/bolt-clang`
 
 ```makefile
 CC="/opt/llvm-bolt/bin/clang"
 CXX="/opt/llvm-bolt/bin/clang++"
 ```
 
-### 3. Активация
-
-В файле `/etc/portage/package.env` применяем новый компилятор к нужным пакетам или ко всей системе:
+Файл: `/etc/portage/env/llvm-bolt`
 
 ```makefile
-# Для конкретных пакетов
-sys-devel/llvm bolt-compiler
-sys-devel/clang bolt-compiler
-
-# ИЛИ для всего мира
-*/* bolt-compiler
+LDFLAGS="${LDFLAGS} -fuse-ld=lld -Wl,-q"
 ```
 
-> **Готово**! Теперь система собирается экстремально быстрым, кастомным компилятором, спрофилированным под конкретное железо.
+Файл: `/etc/portage/env/p-cores`
+
+```makefile
+PORTAGE_SCHEDULING_COMMAND="taskset -pc 0-7"
+MAKEOPTS="-j8 -l8"
+CARGO_BUILD_JOBS="8"
+RUSTFLAGS="${RUSTFLAGS} -C link-arg=-fuse-ld=mold"
+```
+
+Файл: `/etc/portage/env/ssd`
+
+```makefile
+PORTAGE_TMPDIR="/var/tmp/portage-disk"
+```
+
+### 3. Активация
+
+Файл: `/etc/portage/package.env/00-toolchain`
+
+```makefile
+# LLVM core — BOLT + pinning
+llvm-core/clang                     llvm-bolt  p-cores  ssd
+llvm-core/lld                       llvm-bolt  p-cores  ssd
+llvm-core/llvm                      llvm-bolt  p-cores  ssd
+app-shells/bash                     llvm-22
+```
+
+Файл: `/etc/portage/package.env/10-performance`
+
+```makefile
+app-editors/zed           p-cores
+*/*                       bolt-clang
+de-qt/qtwebengine         bolt-profiling
+sys-kernel/gentoo-kernel  kernel-llvm     p-cores
+www-client/chromium       bolt-profiling
+www-client/firefox        ssd p-cores llvm-22
+```
+
+> **Готово**! Теперь `llvm-core/*` собирается BOLT-компилятором с LLD на P-ядрах, а весь мир (`*/*`) использует `bolt-clang`. Остальные env-файлы (`p-cores`, `ssd`, `llvm-22`) добавляются по мере необходимости.

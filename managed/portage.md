@@ -292,14 +292,6 @@ eclean-dist
 eclean-pkg
 ```
 
-### 6.4. Очистка старых версий ядра
-
-При установке новых ядер старые остаются в `/boot`. Для их удаления используйте `eclean-kernel` (из пакета `app-portage/gentoolkit`):
-
-```bash
-eclean-kernel -n 2   # оставить последние 2 ядра
-```
-
 ## 7. Работа с оверлеями
 
 Оверлеи – дополнительные репозитории ebuild'ов, не входящие в официальное дерево. Для управления оверлеями используется `eselect repository` (заменяет layman).
@@ -434,11 +426,51 @@ FEATURES="distcc"
 MAKEOPTS="-jN"   # N = общее количество потоков всех машин
 ```
 
-### 9.3. Бинарные пакеты (binhost)
+### 9.5. Актуальные per-package USE-флаги (живая система)
+
+Ниже — актуальные фрагменты из `/etc/portage/package.use/` для ключевых пакетов данной системы.
+
+#### Ядро и загрузка
+
+```makefile
+# /etc/portage/package.use/gentoo-kernel
+sys-kernel/gentoo-kernel initramfs savedconfig modules-sign -debug -generic
+```
+
+```makefile
+# /etc/portage/package.use/installkernel
+sys-kernel/installkernel systemd-boot ukify dracut uki -grub -efistub -ugrd -refind
+```
+
+#### Браузер и мультимедиа
+
+```makefile
+# /etc/portage/package.use/firefox
+media-libs/libpng apng
+media-libs/libvpx postproc
+www-client/firefox hwaccel pulseaudio openh264 jumbo-build system-pipewire wasm-sandbox system-av1 system-harfbuzz system-icu system-jpeg system-libevent system-libvpx system-webp system-png gmp-autoupdate llvm_slot_22 -llvm_slot_21 -telemetry
+```
+
+```makefile
+# /etc/portage/package.use/ffmpeg
+media-video/ffmpeg qsv x264 x265 drm gpl opus vorbis dav1d svt-av1 libaom libplacebo vpx webp zimg -sdl -opengl
+media-libs/x265 -12bit
+
+media-video/libva-utils vainfo
+```
+
+#### Звук
+
+```makefile
+# /etc/portage/package.use/pipewire
+media-video/pipewire sound-server udev pulseaudio gsettings pipewire-alsa liblc3 lv2 extra flatpak echo-cancel -ssl -libcamera
+```
+
+### 9.6. Бинарные пакеты (binhost)
 
 Можно настроить локальный или удалённый репозиторий бинарных пакетов для быстрой установки без компиляции. Подробнее в [Gentoo Wiki: Binary package guide](https://wiki.gentoo.org/wiki/Binary_package_guide).
 
-### 9.4. Проверка безопасности – glsa-check
+### 9.7. Проверка безопасности – glsa-check
 
 Gentoo публикует уведомления о безопасности (GLSA). Проверить систему на наличие уязвимых пакетов:
 

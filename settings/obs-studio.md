@@ -1,5 +1,7 @@
 # Полное руководство по OBS Studio, FFmpeg и настройке кодеков в Gentoo Linux (Niri/Wayland)
 
+> **Статус**: на момент синхронизации `media-video/obs-studio` **не установлен** в системе. Этот документ — *prospective-гайд*: USE-флаги и конфигурация подготовлены в `/etc/portage/package.use/obs-studio`, но установку и запуск нужно будет выполнить отдельно, когда понадобится OBS.
+
 ## Быстрый старт (для новичков) {: #быстрый-старт } {: .beginner }
 **Уровень сложности: Новичок**
 Если вы новичок, выполните следующие шаги:
@@ -11,8 +13,8 @@
    ```
 3. Включите USE-флаги для аппаратного ускорения:
    ```
-   media-video/ffmpeg vaapi qsv vpl av1 x264 x265 pipewire drm gpl pgo
-   media-video/obs-studio pipewire wayland av1 qsv vpl v4l fdk speex
+   media-video/ffmpeg vaapi qsv dav1d x264 x265 pipewire drm gpl
+   media-video/obs-studio pipewire wayland qsv v4l fdk speex
    ```
 4. Для Intel GPU установите драйверы:
    ```bash
@@ -194,11 +196,9 @@ OBS Studio использует FFmpeg для нескольких целей:
 
 | Пакет | Рекомендуемые USE-флаги (2026) |
 |---|---|
-| media-video/ffmpeg | vaapi qsv vpl av1 x264 x265 pipewire drm gpl pgo |
-| media-video/obs-studio | pipewire wayland av1 qsv vpl v4l fdk speex |
+| media-video/ffmpeg | vaapi qsv dav1d x264 x265 pipewire drm gpl |
+| media-video/obs-studio | pipewire wayland qsv v4l fdk speex |
 | media-libs/mesa | vaapi vulkan |
-
-**Примечание о флаге pgo (Profile-Guided Optimization)**: Использование флага `pgo` позволяет достичь лучшей производительности за счет двухфазной сборки (сначала профилирование, затем оптимизированная сборка). Однако это значительно увеличивает время сборки пакета (в 2-3 раза). Учитывайте это при установке.
 
 
 ## Программные кодировщики (x264, x265) {: .intermediate }
@@ -368,16 +368,16 @@ vainfo
 Ожидаемые результаты должны показывать поддержку H.264 и H.265 кодеков.
 
 ### 5. USE-флаги для OBS и FFmpeg
-Убедитесь, что у вас включены следующие флаги, включая vpl для поддержки oneVPL:
+Убедитесь, что у вас включены следующие флаги:
 
 В `/etc/portage/package.use/obs-studio`:
 ```
-media-video/obs-studio qsv pipewire wayland gpl vpl
+media-video/obs-studio qsv pipewire wayland gpl
 ```
 
 В `/etc/portage/package.use/ffmpeg`:
 ```
-media-video/ffmpeg vaapi qsv vpl gpl x264 x265 drm
+media-video/ffmpeg vaapi qsv gpl x264 x265 drm
 ```
 
 ### 6. Пересборка пакетов

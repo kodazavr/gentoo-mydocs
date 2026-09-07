@@ -1,6 +1,6 @@
 # Веб-браузер: Firefox (Gentoo Way)
 
-Конфигурация Firefox направлена на максимальное использование возможностей LLVM 21, аппаратного ускорения в Wayland и минимизацию дисковых операций для ускорения интерфейса.
+Конфигурация Firefox направлена на максимальное использование возможностей LLVM 22, аппаратного ускорения в Wayland и минимизацию дисковых операций для ускорения интерфейса.
 
 ## 1. Сборка и оптимизация (Clang & PGO)
 
@@ -8,7 +8,7 @@
 
 | USE-flag | Описание |
 |---------|----------|
-| `+clang +llvm_slot_21` | Сборка самым свежим компилятором LLVM 21. |
+| `+clang +llvm_slot_22` | Сборка компилятором LLVM 22. |
 | `+pgo` | Profile-Guided Optimization. Сборка на основе реальных профилей использования (прирост скорости ~10%). |
 | `+jumbo-build` | Ускорение компиляции за счет объединения исходных файлов. |
 | `+system-lib*` | Использование системных библиотек (jpeg, png, webp, av1) для уменьшения оверхеда. |
@@ -18,8 +18,17 @@
 Полный отказ от X11 в пользу нативного Wayland-окружения (Niri) и современных драйверов Intel.
 
 - **Backend**: Собран с `-X +wayland`. Никакого XWayland.
-- **HWACCEL**: `+hwaccel` включен. В связке с драйвером ядра xe и Mesa (iris) это обеспечивает аппаратное декодирование видео с минимальной нагрузкой на CPU.
-- **Интеграция**: `+dbus`, `+pulseaudio` (через Pipewire) и `+system-pipewire` для бесшовной работы WebRTC и шаринга экрана.
+- **HWACCEL**: `+hwaccel` включен. В связке с драйвером ядра (цель — `xe`, текущее состояние — `i915`) и Mesa (iris) это обеспечивает аппаратное декодирование видео с минимальной нагрузкой на CPU.
+- **Интеграция**: `+dbus`, `+pulseaudio` (через PipeWire) и `+system-pipewire` для бесшовной работы WebRTC и шаринга экрана.
+
+### package.use
+
+```makefile
+# /etc/portage/package.use/firefox
+media-libs/libpng apng
+media-libs/libvpx postproc
+www-client/firefox hwaccel pulseaudio openh264 jumbo-build system-pipewire wasm-sandbox system-av1 system-harfbuzz system-icu system-jpeg system-libevent system-libvpx system-webp system-png gmp-autoupdate llvm_slot_22 -llvm_slot_21 -telemetry
+```
 
 ## 3. Безопасность
 
@@ -57,10 +66,3 @@ systemctl --user status psd.service
 - **Размер профиля**: ~235M
 - **Overlayfs size**: ~69M (объем реально измененных данных в сессии)
 - **Точка монтирования**: /run/user/1000/psd/...
-
-### Итоговый чек-лист
-
-- [x] Сборка через Clang 21.
-- [x] Профилирование PGO активно.
-- [x] Нативный Wayland без X11.
-- [x] Профиль в RAM через PSD + OverlayFS.

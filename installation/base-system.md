@@ -2,69 +2,88 @@
 
 Конфигурация окружения Gentoo с упором на производительность (LLVM/LTO), современные линкеры и кэширование.
 
-## 1. Настройка компилятора и тулчейна (LLVM)
+## 1. Настройка тулчейна (`/etc/portage/make.conf`)
 
-В данной системе используется стек LLVM вместо классического GCC для достижения лучшей оптимизации и скорости сборки.
-
-Файл: `/etc/portage/make.conf`
+В данной системе используется стек LLVM вместо классического GCC. Глобальный линкер — LLD; ccache включён для ускорения повторных сборок.
 
 ```makefile
-# Глобальный тулчейн LLVM (Slot 23)
+# Глобальный тулчейн LLVM
+LLVM_SLOT="22"
 CC="clang"
 CXX="clang++"
 AR="llvm-ar"
 NM="llvm-nm"
 RANLIB="llvm-ranlib"
 
-# CPU и общие флаги (Alder Lake + O3 + LTO)
+# CPU и общие флаги (Alder Lake + O3 + ThinLTO)
 COMMON_FLAGS="-march=alderlake -O3 -flto=thin -pipe -mno-kl -mno-pconfig -mno-sgx -mno-widekl -mshstk"
 CFLAGS="${COMMON_FLAGS}"
 CXXFLAGS="${COMMON_FLAGS}"
+FCFLAGS="${COMMON_FLAGS}"
+FFLAGS="${COMMON_FLAGS}"
+CPU_FLAGS_X86="aes avx avx2 avx_vnni bmi1 bmi2 f16c fma3 mmx mmxext pclmul popcnt rdrand sha sse sse2 sse3 sse4_1 sse4_2 ssse3 vpclmulqdq"
 
-# Специфичные флаги для Rust и Go
-RUSTFLAGS="-C target-cpu=alderlake -C opt-level=3"
+# Параллельная сборка
+MAKEOPTS="-j14 -l10"
+
+# Флаги компиляторов
+RUSTFLAGS="-C target-cpu=alderlake -C opt-level=3 -C linker=clang -C link-arg=-fuse-ld=lld"
+LDFLAGS="-Wl,-O1 -Wl,--as-needed -fuse-ld=lld"
 GOAMD64="v3"
+CGO_CFLAGS="${CFLAGS}"
+CGO_CXXFLAGS="${CXXFLAGS}"
+CGO_LDFLAGS="${LDFLAGS}"
 GOFLAGS="-buildmode=pie"
-```
 
-## 2. Ускорение сборки (mold & ccache)
-
-Для минимизации времени ожидания при сборке тяжелых пакетов используется современный линкер mold и система кэширования ccache.
-
-```makefile
-# Использование линкера mold
-LDFLAGS="${LDFLAGS} -fuse-ld=mold"
-
-# Настройка ccache
+# ccache настройки
 FEATURES="${FEATURES} ccache" 
 CCACHE_DIR="/var/tmp/ccache"
 CCACHE_SIZE="50G"
 CCACHE_COMPRESS="1"
 CCACHE_COMPRESS_LEVEL="3"
 CCACHE_SLOPPINESS="include_file_mtime,include_file_ctime,time_macros,file_macro,pch_defines"
-```
 
-## 3. Глобальные USE-флаги
-
-Философия системы: Pure Wayland. Полное отсутствие X11 зависимостей, использование системных демонов systemd и современных протоколов безопасности.
-
-```makefile
 USE="\
-  # Графика: Wayland native, без X
-  wayland gles2 egl mapi opencl vpp vaapi vulkan zink -X -xwayland \
-  # Оптимизация сборки
+# Графика и дисплей
+  wayland gles2 egl mapi opencl vpp vaapi vulkan zink \
+# Оптимизация
   pgo lto custom-cflags asm \
-  # Звук и видео (Pipewire)
-  alsa ffmpeg gstreamer pipewire sound-server v4l screencast -pulseaudio \
-  # Система и безопасность
-  systemd dbus tpm cryptsetup secureboot apparmor audit bpf nftables hardened verify-sig \
-  # Сеть
-  bluetooth wifi networkmanager \
-  # Отключено (телеметрия и устаревшие компоненты)
-  -elogind -consolekit -telemetry"
+# Аудио/видео
+  alsa ffmpeg gstreamer pipewire sound-server v4l screencast icu \
+# Сеть и устройства
+  bluetooth wifi networkmanager udisks2 dist-kernel \
+# Файловые системы и storage
+  btrfs zstd \
+# Системные (systemd, dbus, уведомления)
+  systemd dbus libnotify policykit acpi \
+# Desktop/input
+  libinput \
+# Безопасность
+  tpm cryptsetup openssl secureboot apparmor audit bpf nftables verify-sig hardened \
+# Отключенные (X11, elogind)
+  -X -xwayland -elogind -consolekit -pulseaudio -telemetry"
+
+# Видео и графика
+VIDEO_CARDS="intel iris zink"
+INPUT_DEVICES="libinput"
+
+ABI_X86="64"
+LC_MESSAGES="C.UTF-8"
+
+GENTOO_MIRRORS="http://ftp.byfly.by/pub/gentoo-distfiles/ \
+    ftp://ftp.byfly.by/pub/gentoo-distfiles/ \
+    rsync://ftp.byfly.by/gentoo/ \
+    https://mirror.yandex.ru/gentoo-distfiles/ \
+    http://mirror.yandex.ru/gentoo-distfiles/ \
+    ftp://mirror.yandex.ru/gentoo-distfiles/"
+
+SECUREBOOT_SIGN_KEY="/var/lib/sbctl/keys/db/db.key"
+SECUREBOOT_SIGN_CERT="/var/lib/sbctl/keys/db/db.pem"
 ```
 
-## 4. Повышение привилегий (doas)
+> **Примечание**: ранее в качестве глобального линкера использовался `mold`. Сейчас системная сборка идёт через `lld`; `mold` остаётся в качестве линкера для Rust-флагов в `env/p-cores`.
+
+## 2. Повышение привилегий (doas)
 
 Вместо громоздкого sudo используется легковесный doas.
 
