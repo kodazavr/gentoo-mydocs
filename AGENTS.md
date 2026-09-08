@@ -43,7 +43,7 @@
 │
 ├── desktop/                  # Рабочее окружение
 │   ├── niri.md               # Конфиг Niri (KDL), greetd/tuigreet
-│   ├── noctalia-shell.md     # Черновик панели на quickshell
+│   ├── noctalia-shell.md     # Noctalia v5 для Niri
 │   └── wayland-portals.md    # XDG Desktop Portals
 │
 ├── filesystem/               # Файловая система
@@ -220,7 +220,6 @@ systemd-cryptenroll
 ## 6. Известные проблемы и нерешённые вопросы
 
 - `ROADMAP.md` пустой.
-- `desktop/noctalia-shell.md` — черновик из 4 строк.
 - `settings/obs-studio.md` — USE-флаги актуализированы (2026-08-01), но пакет `media-video/obs-studio` не установлен.
 - Дублирование nftables: `settings/nftables.md` vs `settings/nftables-docker-libvirt.md`.
 - `settings/nftables.md` не указан в `README.md`.

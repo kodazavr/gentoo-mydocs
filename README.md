@@ -32,7 +32,7 @@
 | Раздел | Описание |
 |--------|----------|
 | [desktop/niri](desktop/niri.md) | Тайловый Wayland-композитор Niri со скроллингом окон |
-| [desktop/noctalia-shell](desktop/noctalia-shell.md) | Кастомная панель на базе quickshell |
+| [desktop/noctalia-shell](desktop/noctalia-shell.md) | Нативная Wayland-оболочка Noctalia v5 для Niri |
 | [desktop/wayland-portals](desktop/wayland-portals.md) | Настройка XDG Desktop Portals для скринкастинга и диалогов |
 
 ### 💾 Файловая система
@@ -95,8 +95,7 @@
 
 | Раздел | Описание |
 |--------|----------|
-| [troubleshooting/system-vs-docs-drift-2026-06-13](troubleshooting/system-vs-docs-drift-2026-06-13.md) | Аудит дрейфа документации vs реальная система |
-| [troubleshooting/configs-review-2026-07-26](troubleshooting/configs-review-2026-07-26.md) | Ревью `configs/etc/portage/` перед LLVM-миграцией |
+| [troubleshooting/docker-29-iptables-missing](troubleshooting/docker-29-iptables-missing.md) | Docker 29 не запускается из-за отсутствия команды `iptables` |
 
 ### ⚙️ Управление конфигурацией
 

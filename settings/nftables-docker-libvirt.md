@@ -4,6 +4,11 @@
 
 При совместной работе Docker (iptables-nft backend) и Libvirt (QEMU/KVM) на Gentoo Linux трафик из виртуальных машин не выходит наружу. Пакеты доходят до сетевого стека хоста, но `ip_forward` не срабатывает — VM "висят" в своей подсети.
 
+> **Примечание для Docker 29:** нативный nftables backend по-прежнему включается
+> только явно. Если после обновления `docker.service` падает с ошибкой
+> `iptables not found`, см.
+> [отдельную инструкцию](../troubleshooting/docker-29-iptables-missing.md).
+
 ### Root Cause
 
 В nftables несколько таблиц могут подписываться на один hook. Docker и Libvirt оба цепляются на `forward` с priority `filter` (0):
@@ -281,7 +286,7 @@ include "/etc/nftables/rules/libvirt.nft"
 - **Kernel:** 6.x (Alder Lake, Clang/LLVM + ThinLTO)
 - **Init:** systemd
 - **Firewall:** nftables 1.1.x (net-firewall/nftables)
-- **Docker:** 28.x (iptables-nft backend)
+- **Docker:** 29.8.0 (iptables-nft backend)
 - **Libvirt:** 10.x (QEMU/KVM, default NAT network)
 - **Privilege escalation:** doas
 
@@ -331,6 +336,10 @@ $ doas emerge -C firewalld
 
 ### Docker не стартует после изменений
 
+Если журнал содержит `failed to create NAT chain DOCKER: iptables not found`,
+проблема не в порядке запуска `nftables.service`. Используй
+[инструкцию для Docker 29](../troubleshooting/docker-29-iptables-missing.md).
+
 ```bash
 # Проверить, что nftables загрузился до Docker
 $ doas journalctl -u docker.service -b | grep -i nftables
@@ -355,4 +364,3 @@ $ doas systemctl restart docker
 - [Docker: Firewall with nftables](https://docs.docker.com/engine/network/firewall-nftables/)
 - [ServerFault: Understanding nftables jumping](https://serverfault.com/questions/1126278/understanding-how-does-jumping-work-in-nftables)
 - [dzx.fr: Nftables, Docker, and a default drop policy](https://dzx.fr/blog/nftables-docker-drop-policy/)
-

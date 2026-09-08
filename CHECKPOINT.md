@@ -10,9 +10,9 @@
 | Параметр | Значение |
 |----------|----------|
 | Дата последнего аудита | 2026-06-13 |
-| Дата последнего рабочего checkpoint | 2026-08-27 |
+| Дата последнего рабочего checkpoint | 2026-09-08 |
 | Ветка | `main` |
-| Состояние рабочего дерева | есть несохранённые пользовательские правки и новый `configs/` |
+| Состояние рабочего дерева | изменения документации этой сессии не закоммичены |
 | Система | Gentoo Linux, ядро `7.1.5-bdsm`, systemd-boot, Secure Boot + TPM2 |
 | Аппаратура | ASUS ExpertBook B5402, Intel Core i7-1260P (Alder Lake) |
 
@@ -26,70 +26,20 @@
 
 ---
 
-## Активный handoff: Noctalia Shell v4 → v5.0.0-beta.9
+## Завершено: Noctalia Shell v5.0.1
 
-### Цель и текущая граница
-
-- Цель — заменить установленный из GURU Noctalia Shell `4.7.7` (ветка v4,
-  Quickshell) на точный upstream-релиз `5.0.0-beta.9` (native Wayland,
-  TOML-конфигурация).
-- В GURU есть ebuild `5.0.0_beta8`, но beta.9 отсутствует. Пакеты имеют то же
-  имя и `SLOT=0`, поэтому параллельная установка v4 и v5 через Portage
-  невозможна.
-- Живые `/etc/portage`, `~/.config/noctalia/` и `~/.config/niri/` **не
-  изменялись**. Noctalia v4 продолжает запускаться через Quickshell.
-- Не выполнялись `emerge`, Snapper-снимок, вход в новую Niri-сессию и удаление
-  v4-конфигурации. Не просматривались runtime-state и данные QML-плагинов.
-
-### Что подготовлено в `configs/`
-
-- Локальный overlay `configs/var/db/repos/noctalia-local/` с ebuild
-  `gui-apps/noctalia-5.0.0_beta9`; исходник закреплён на GitHub tag
-  `v5.0.0-beta.9` и имеет проверенный Manifest.
-- Файлы подключения overlay и keyword находятся в
-  `configs/etc/portage/repos.conf/noctalia-local.conf` и
-  `configs/etc/portage/package.accept_keywords/noctalia-local`.
-- Базовый кандидат конфигурации v5:
-  `configs/home/.config/noctalia/config.toml`. В нём перенесены Ayu, Inter,
-  floating bar/dock, wallpaper, DDC brightness, Weather, lockscreen и Niri
-  backdrop. V4 QML-плагины сознательно не переносятся.
-- В `config.toml` оставлен единственный polkit agent сессии:
-  `polkit_agent = false`, поскольку Niri уже запускает
-  `polkit-gnome-authentication-agent-1`.
-- `configs/home/.config/niri/noctalia-v5.patch` переводит autostart,
-  Noctalia IPC-бинды, layer rules и правило окна Settings на v5. Прямые бинды
-  `wpctl` и `brightnessctl` сохранены, чтобы они работали и на lock screen.
-- Порядок ручного переноса описан в `configs/README.md`,
-  `configs/home/README.md` и `configs/home/.config/niri/README.md`.
-
-### Что проверено
-
-- TOML-кандидат разбирается `tomllib` без синтаксических ошибок.
-- Ebuild проходит `bash -n`; контрольные суммы Manifest повторно совпали с
-  официальным tarball beta.9.
-- `noctalia-v5.patch` проходит `patch --dry-run` на текущих Niri-файлах.
-- Patch был применён только к изолированной копии KDL-файлов в `/tmp`;
-  `niri validate --config .../config.kdl` завершился успешно.
-- `pkgcheck` не дал результата из-за некорректно доступного глобального
-  Portage repo configuration в среде проверки; это не является проверкой
-  ebuild и требует отдельной диагностики перед применением.
-
-### С чего продолжать
-
-1. Вручную проверить кандидатные overlay, TOML и Niri patch в `configs/`.
-2. Перед любыми изменениями живой системы создать Snapper-снимок и сохранить
-   копию v4 `~/.config/noctalia/`.
-3. Подключить локальный overlay и установить
-   `=gui-apps/noctalia-5.0.0_beta9::noctalia-local`; не заменять его live
-   ebuild `9999`.
-4. Перенести `config.toml` в `~/.config/noctalia/` и выполнить
-   `noctalia config validate`. При неожиданных GUI-настройках проверить
-   overrides в `~/.local/state/noctalia/settings.toml`.
-5. Только после успешного запуска v5 применить Niri patch, проверить его
-   `--dry-run` и перезапустить Niri-сессию.
-6. После входа проверить launcher, Control Center, Settings, clipboard,
-   историю уведомлений, lock screen, обои и Niri overview. Если v5 не
-   стартует, откатить конфиги и пакет к v4 из заранее сохранённой копии.
+- Миграция с Noctalia Shell `4.7.7` на стабильный релиз `5.0.1` применена.
+- Установлен пакет `gui-apps/noctalia-5.0.1`; `noctalia --version` возвращает
+  `noctalia v5.0.1`.
+- Пакет установлен из `::guru`; Portage DB содержит источник `guru`.
+- Локальный overlay `/var/db/repos/noctalia-local` и его запись в
+  `/etc/portage/repos.conf/` удалены.
+- Правила для testing-ветки перенесены в
+  `/etc/portage/package.accept_keywords/noctalia` и не привязаны к имени
+  репозитория.
+- Noctalia v5 работает как нативная Wayland-оболочка с TOML-конфигурацией;
+  прежний handoff для beta.9 больше не актуален.
+- Переход на GURU завершён 2026-09-09.
 
 ---
 
@@ -227,7 +177,7 @@
 - NetworkManager + iwd
 - `doas.conf`
 - AppArmor, auditd, usbguard сервисы включены
-- Niri 26.04 + Wayland + Noctalia-qs 0.0.12
+- Niri 26.04 + Wayland + Noctalia 5.0.1
 - PipeWire 1.6.8 + WirePlumber 0.5.15
 - Intel i7-1260P, Vulkan `anv`
 
@@ -253,7 +203,6 @@
 | Проблема | Место | Приоритет |
 |----------|-------|-----------|
 | `ROADMAP.md` пустой | корень | Средний |
-| `desktop/noctalia-shell.md` — черновик 4 строк | `desktop/` | Низкий |
 | Дублирование nftables Docker+Libvirt | `settings/nftables.md` vs `settings/nftables-docker-libvirt.md` | Средний |
 | `settings/nftables.md` не указан в `README.md` | `README.md` | Низкий |
 | `settings/obs-studio.md` — возможен битый fenced code block ~834 строка | `settings/obs-studio.md` | Средний |
@@ -320,7 +269,6 @@ snapper -c root create -d "pre-docs-sync-YYYY-MM-DD"
 
 - Заполнить или удалить `ROADMAP.md`.
 - Консолидировать nftables-документы.
-- Расширить `desktop/noctalia-shell.md` или объединить с `settings/gtk.md`.
 - Проверить и исправить `settings/obs-studio.md` на битые блоки кода.
 - Убрать executable bit с `.gitignore`, `.kilocodemodes`, `.markdownlint.json`.
 - Решить судьбу `.markdownlint.json` (вынести из игнора или удалить).
@@ -378,6 +326,8 @@ snapper -c root create -d "pre-docs-sync-YYYY-MM-DD"
 
 | Дата | Событие |
 |------|---------|
+| 2026-09-09 | Noctalia `5.0.1` переведена на `::guru`; локальный overlay `noctalia-local` и его `repos.conf` удалены, правила для testing-ветки сохранены в `/etc/portage/package.accept_keywords/noctalia` |
+| 2026-09-08 | Миграция с Noctalia Shell `4.7.7` на стабильный релиз `5.0.1` закрыта; локально подтверждены установленный пакет, версия CLI и overlay `/var/db/repos/noctalia-local` |
 | 2026-08-01 | Документация синхронизирована с системой: ffmpeg/obs-studio USE (мёртвые `vpl`/`av1`/`shaderc`/`pgo` → `dav1d`); BOLT помечен как отключённый (`cpu-optimization.md`, `bolt.md`); RUSTFLAGS → bare `clang`; `.gitignore` дополнен (`.kilocodemodes`, `result-rebuild.md`, `graphify-out/`) |
 | 2026-08-01 | **Ребилд `@world` с PGO завершён успешно.** Итоговая PGO-конфигурация: `bash`/`binutils` — GCC PGO+LTO (`gcc-fallback bfd`, upstream PGO несовместим с clang); `xz-utils`/`python` — clang PGO (`llvm-profdata` / upstream CPython). Глобальный `pgo` в `make.conf` оставлен — прочие `IUSE pgo` пакеты прошли с clang без ошибок. Bare `CC`/`CXX` (`clang`/`clang++`) подтверждены, `eselect llvm` → 22 |
 | 2026-08-01 | Ребилд `@world` завершён; PGO возвращён (clang+llvm-profdata → LLVM 22, v11); bare `CC`/`CXX` подтверждены — `/usr/bin/clang` отсутствует, резолвится через PATH в `/usr/lib/llvm/22/bin` |
