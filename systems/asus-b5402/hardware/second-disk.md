@@ -1,10 +1,22 @@
+---
+kind: system
+scope: system
+status: draft
+last_verified: null
+verified_on: [asus-b5402]
+---
+
 # Второй диск: бэкапы и дополнительное хранилище
+
+> **Статус:** системный план, не подтверждённый текущим аудитом. Перед
+> выполнением заново проверь имена устройств, точки монтирования и состояние
+> обоих дисков.
 
 Подключение второго NVMe (`nvme0n1`, ранее — Arch Linux) как зашифрованного хранилища для **бэкапов системы и конфигов** + **дополнительного места под данные**. Без RAID, без вмешательства в критический путь загрузки.
 
 > **Когда применимо**: на машине уже работает Gentoo на `nvme1n1` (LUKS2 + TPM2 + UKI + Btrfs), есть второй физический диск `nvme0n1`, который хочется задействовать под бэкапы и данные.
 >
-> **Контекст**: подробности загрузочного стека — [installation/systemd-uki-setup](../installation/systemd-uki-setup.md) и [installation/secure-boot-tpm](../installation/secure-boot-tpm.md). Btrfs-соглашения — [filesystem/btrfs-setup](../filesystem/btrfs-setup.md).
+> **Контекст**: подробности загрузочного стека — [installation/systemd-uki-setup](../../../installation/systemd-uki-setup.md) и [installation/secure-boot-tpm](../../../installation/secure-boot-tpm.md). Btrfs-соглашения — [filesystem/btrfs-setup](../../../filesystem/btrfs-setup.md).
 
 ---
 
@@ -15,7 +27,7 @@
 - **Второй диск НЕ в initramfs.** Открывается через systemd `/etc/crypttab` уже после загрузки rootfs. Dracut/UKI/`rd.luks.*`/sbctl — **не трогаем**. Критический путь загрузки остаётся таким же надёжным.
 - **Один LUKS2 + TPM2 (PCR 0+7)** — тот же TPM, что у первого диска. Авторасшифровка при загрузке.
 - **Soft-cold для бэкапов**: `@backup` монтируется `noauto`, systemd-юнит монтирует его только на время бэкапа и отмонтирует после. Защищает от ransomware в userspace (без root путь `/mnt/backup` недоступен).
-- **`@data` горячий** — всегда смонтирован в `/home/vladimir/data`, это рабочее хранилище.
+- **`@data` горячий** — всегда смонтирован в `/home/<username>/data`, это рабочее хранилище.
 - **btrbk для системы** (атомарные Btrfs-снапшоты `@`), **borg для `/home` и `/etc`** (точечный restore, дедупликация, шифрование, exclude-паттерны).
 
 ### 1.2. Целевая схема
@@ -26,9 +38,9 @@
    └─ Btrfs, label "backup", compress=zstd:3
       ├─ @backup   → /mnt/backup            (noauto, soft-cold)
       │   ├─ gentoo/      ← btrbk: инкрементальные снапшоты @ (корень Gentoo)
-      │   ├─ home.borg    ← borg-репозиторий (зашифрованный, /home/vladimir)
+      │   ├─ home.borg    ← borg-репозиторий (зашифрованный, /home/<username>)
       │   └─ etc.borg     ← borg-репозиторий (/etc)
-      └─ @data     → /home/vladimir/data    (hot, всегда смонтирован)
+      └─ @data     → /home/<username>/data    (hot, всегда смонтирован)
 ```
 
 > ⚠️ **Важный нюанс про soft-cold**: при одном LUKS контейнер открыт всё время, пока работает система (для горячего `@data`). Защита на уровне точки монтирования: `/mnt/backup` не смонтирован → userspace-процесс не достанет бэкапы. Для защиты даже от root-уровня нужен **hard-cold** (два отдельных LUKS на двух разделах диска) — см. §10.
@@ -38,7 +50,7 @@
 | Источник | Куда | Инструмент | Что исключаем |
 |----------|------|-----------|---------------|
 | `@` (корень Gentoo: ОС + `/etc`) | `/mnt/backup/gentoo/` | btrbk (send/receive) | кэши в отдельных subvols не входят в `@` |
-| `/home/vladimir` | `/mnt/backup/home.borg` | borg | `.cache`, `llvm-project`, `llvm-for-bolt-perf`, `Downloads`, `.steam`, `*.venv`, `__pycache__` |
+| `/home/<username>` | `/mnt/backup/home.borg` | borg | `.cache`, `llvm-project`, `llvm-for-bolt-perf`, `Downloads`, `.steam`, `*.venv`, `__pycache__` |
 | `/etc` | `/mnt/backup/etc.borg` | borg | `—` (точечный restore) |
 | `~/.ssh`, `~/.gnupg`, токены | внутри `home.borg` | borg (зашифрован) | — |
 
@@ -64,7 +76,7 @@ lsblk -o NAME,FSTYPE,MOUNTPOINTS,PARTTYPENAME /dev/nvme1n1
 
 ## 3. Спасение данных Arch
 
-На `nvme0n1p1` сейчас LUKS с Arch (`cryptarch`, UUID `41fdf23a-ab78-48b2-8a29-2c3b0829afc3`). Перед стиранием — открыть read-only и забрать нужное.
+На `nvme0n1p1` сейчас LUKS с Arch (`cryptarch`, UUID `<arch-luks-uuid>`). Перед стиранием — открыть read-only и забрать нужное.
 
 ```bash
 # Открыть Arch LUKS только для чтения
@@ -192,8 +204,8 @@ doas umount /mnt/cryptdata-root
 Точки монтирования:
 
 ```bash
-doas mkdir -p /home/vladimir/data /mnt/backup
-doas chown vladimir:vladimir /home/vladimir/data
+doas mkdir -p /home/<username>/data /mnt/backup
+doas chown <username>:<username> /home/<username>/data
 ```
 
 Файл: `/etc/crypttab` (создать, если отсутствует):
@@ -209,7 +221,7 @@ cryptdata      UUID=<LUKS-UUID>        none         luks,tpm2-device=auto,tpm2-m
 
 ```text
 # Second disk (nvme0n1) — data (hot)
-UUID=<BTRFS-UUID>  /home/vladimir/data  btrfs  rw,noatime,compress=zstd:3,ssd,discard=async,space_cache=v2,subvol=/@data     0 0
+UUID=<BTRFS-UUID>  /home/<username>/data  btrfs  rw,noatime,compress=zstd:3,ssd,discard=async,space_cache=v2,subvol=/@data     0 0
 
 # Second disk — backup target (soft-cold, noauto)
 UUID=<BTRFS-UUID>  /mnt/backup          btrfs  rw,noatime,compress=zstd:3,ssd,discard=async,space_cache=v2,subvol=/@backup,noauto  0 0
@@ -226,11 +238,11 @@ doas systemctl daemon-reload
 doas systemctl start systemd-cryptsetup@cryptdata
 
 # Смонтировать горячие данные (backup НЕ монтируем — noauto)
-doas mount /home/vladimir/data
+doas mount /home/<username>/data
 
 # Проверка
 lsblk -o NAME,FSTYPE,MOUNTPOINTS /dev/nvme0n1
-mount | grep -E 'cryptdata|/home/vladimir/data'
+mount | grep -E 'cryptdata|/home/<username>/data'
 ```
 
 ---
@@ -306,21 +318,21 @@ trap 'umount "$BACKUP_TARGET" 2>/dev/null || true' EXIT
 ARCHIVE_HOME="home-$(date +%Y-%m-%d_%H:%M)"
 ARCHIVE_ETC="etc-$(date +%Y-%m-%d_%H:%M)"
 
-# /home/vladimir с exclude-паттернами
+# /home/<username> с exclude-паттернами
 borg create --stats --progress \
-  --exclude '/home/vladimir/.cache' \
-  --exclude '/home/vladimir/llvm-project' \
-  --exclude '/home/vladimir/llvm-for-bolt-perf' \
-  --exclude '/home/vladimir/Downloads' \
-  --exclude '/home/vladimir/.steam' \
-  --exclude '/home/vladimir/.local/share/Trash' \
+  --exclude '/home/<username>/.cache' \
+  --exclude '/home/<username>/llvm-project' \
+  --exclude '/home/<username>/llvm-for-bolt-perf' \
+  --exclude '/home/<username>/Downloads' \
+  --exclude '/home/<username>/.steam' \
+  --exclude '/home/<username>/.local/share/Trash' \
   --exclude '*/.venv' \
   --exclude '*/__pycache__' \
   --exclude '*/node_modules' \
   --exclude-caches \
   --exclude '*.pyc' \
   "${REPO_HOME}::${ARCHIVE_HOME}" \
-  /home/vladimir
+  /home/<username>
 
 # /etc
 borg create --stats \
@@ -452,7 +464,7 @@ lsblk -o NAME,FSTYPE,MOUNTPOINTS /dev/nvme0n1
 systemctl status systemd-cryptsetup@cryptdata
 
 # @data смонтирован
-mount | grep /home/vladimir/data
+mount | grep /home/<username>/data
 
 # @backup НЕ смонтирован (soft-cold)
 mount | grep /mnt/backup   # должно быть пусто
@@ -545,7 +557,7 @@ doas borg info /mnt/backup/home.borg::home-<DATE>
 doas borg check --verify-data /mnt/backup/home.borg
 
 # Восстановить файл/директорию
-cd /tmp && doas borg extract /mnt/backup/home.borg::home-<DATE> home/vladimir/<path>
+cd /tmp && doas borg extract /mnt/backup/home.borg::home-<DATE> home/<username>/<path>
 
 # Закрыть backup-target
 doas umount /mnt/backup
@@ -563,5 +575,5 @@ doas cryptsetup luksDump /dev/nvme1n1p2
 - [borgbackup documentation](https://borgbackup.readthedocs.io/) — exclude-паттерны, restore, automation
 - [systemd-cryptenroll](https://www.freedesktop.org/software/systemd/man/systemd-cryptenroll.html) — TPM2-привязка
 - [crypttab](https://www.freedesktop.org/software/systemd/man/crypttab.html) — опции LUKS через systemd
-- [filesystem/btrfs-setup](../filesystem/btrfs-setup.md) — соглашения по subvols/опциям
-- [installation/secure-boot-tpm](../installation/secure-boot-tpm.md) — модель TPM/LUKS первого диска
+- [filesystem/btrfs-setup](../../../filesystem/btrfs-setup.md) — соглашения по subvols/опциям
+- [installation/secure-boot-tpm](../../../installation/secure-boot-tpm.md) — модель TPM/LUKS первого диска

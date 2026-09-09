@@ -1,3 +1,11 @@
+---
+kind: system
+scope: system
+status: draft
+last_verified: null
+verified_on: [asus-b5402]
+---
+
 # Специфика ASUS ExpertBook B5402CBA
 
 Тонкая настройка уникальных функций ноутбука для работы в Gentoo (ядро 12th Gen Intel / Alder Lake).
@@ -14,7 +22,7 @@
 
 Для продления жизни аккумулятора при работе от сети используется ограничение порога заряда до 80%.
 
-### Текущий статус (BAT1)
+### Записанное состояние BAT1
 
 Согласно данным tlp-stat, батарея в системе определяется под индексом BAT1.
 
@@ -44,7 +52,7 @@ echo 80 | doas tee /sys/class/power_supply/BAT1/charge_control_end_threshold
 
 ## 4. Состояние аккумулятора (Мониторинг)
 
-Текущие показатели износа (на апрель 2026):
+Показатели износа на апрель 2026:
 
 - **Design Capacity**: 5260 mAh
 - **Full Charge Capacity**: 4827 mAh

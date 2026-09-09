@@ -1,15 +1,36 @@
+---
+kind: reference
+scope: general
+status: current
+last_verified: null
+verified_on: [asus-b5402]
+---
+
 # Gentoo Linux Documentation
 
-Моя персональная документация по настройке и эксплуатации Gentoo Linux с акцентом на безопасность, производительность и современные технологии.
+Практическая документация по настройке и эксплуатации Gentoo Linux с акцентом
+на безопасность, производительность и современный Wayland-стек. Примеры
+основаны на ASUS ExpertBook B5402, но фактическое состояние этой машины не
+должно подменять общую инструкцию.
 
-## Философия системы
+## Как устроена документация
 
-Данная система построена на принципах:
-- **Pure Wayland** — полный отказ от X11 в пользу нативного Wayland
-- **LLVM/LTO** — использование clang с оптимизациями для максимальной производительности
-- **Hardened** — профиль `default/linux/amd64/23.0/no-multilib/hardened/systemd` + PiE, SSP, RELRO
-- **Безопасность** — Secure Boot + TPM 2.0 + LUKS + AppArmor + Audit
-- **Современный стек** — systemd, PipeWire, Dracut, Btrfs
+- [Политика документации](DOCUMENTATION_POLICY.md) разделяет общие
+  руководства, состояние эталонной системы, troubleshooting и историю.
+- [Правила участия](CONTRIBUTING.md) содержат шаблон метаинформации и порядок
+  проверки изменений.
+- [Инвентаризация](DOCUMENTATION_INVENTORY.md) фиксирует исходную
+  классификацию и результат миграции.
+- [ASUS ExpertBook B5402](systems/asus-b5402/README.md) — эталонная система,
+  на которой проверяются общие инструкции.
+
+## Основные темы
+
+- Wayland-окружение на Niri;
+- установка Gentoo и управление Portage;
+- Btrfs, Snapper, UKI, Secure Boot и TPM2;
+- системная и прикладная безопасность;
+- диагностика аппаратного и программного стека.
 
 ## Визуальный обзор
 
@@ -18,6 +39,12 @@
 | ![Desktop](screenshots/Screenshot%20from%202026-04-10%2015-31-19.png) | ![Shell](screenshots/Screenshot%20from%202026-04-10%2015-31-37.png) | ![Status](screenshots/Screenshot%20from%202026-04-10%2016-09-05.png) |
 
 ## Структура документации
+
+### 🧭 Эталонная система
+
+| Раздел | Описание |
+|--------|----------|
+| [systems/asus-b5402](systems/asus-b5402/README.md) | Записанное состояние ASUS ExpertBook B5402, даты проверки и ссылки на общие руководства |
 
 ### 🚀 Установка и загрузка
 
@@ -46,10 +73,7 @@
 
 | Раздел | Описание |
 |--------|----------|
-| [hardware/asus-expertbook](hardware/asus-expertbook.md) | Специфика ноутбука ASUS ExpertBook B5402 |
 | [hardware/intel-graphics](hardware/intel-graphics.md) | Драйвер Intel Xe и Vulkan (ANV) |
-| [hardware/cpu-optimization](hardware/cpu-optimization.md) | Оптимизация для Intel Alder Lake (P-cores + E-cores) |
-| [hardware/second-disk](hardware/second-disk.md) | Второй диск: бэкапы (btrbk + borg) и доп. хранилище |
 
 ### 🌐 Сеть
 
@@ -80,15 +104,12 @@
 | Раздел | Описание |
 |--------|----------|
 | [settings/gtk](settings/gtk.md) | Настройка GTK4 тем для Niri |
-| [settings/nm-iwd](settings/nm-iwd.md) | MAC-рандомизация и iwd |
 | [settings/r2modman](settings/r2modman.md) | Интеграция r2modman со Steam (Flatpak) |
 | [settings/scanner-driver](settings/scanner-driver.md) | Настройка сканера отпечатков Elan 04f3:0c77 |
 | [settings/obs-studio](settings/obs-studio.md) | OBS Studio, FFmpeg и настройка кодеков |
 | [settings/perplexity](settings/perplexity.md) | Интеграция Perplexity AppImage в меню приложений |
-| [settings/bolt](settings/bolt.md) | Оптимизация Clang с помощью BOLT для Alder Lake |
 | [settings/firefox](settings/firefox.md) | Firefox: Clang, PGO, Wayland, Profile-sync-daemon |
 | [settings/flatpak](settings/flatpak.md) | Flatpak и Flatseal для изоляции приложений |
-| [settings/nftables-docker-libvirt](settings/nftables-docker-libvirt.md) | Проблема отсутствия интернета на виртуальных машинах из-за правил Docker | 
 | [settings/connect-phone-android](settings/connect-phone-android.md) | Проблема с подключением телефона для передачи данных |
 
 ### 🔍 Решение проблем и аудит
@@ -96,6 +117,8 @@
 | Раздел | Описание |
 |--------|----------|
 | [troubleshooting/docker-29-iptables-missing](troubleshooting/docker-29-iptables-missing.md) | Docker 29 не запускается из-за отсутствия команды `iptables` |
+| [troubleshooting/docker-libvirt-nftables](troubleshooting/docker-libvirt-nftables.md) | Черновик решения конфликта Docker и Libvirt в nftables; правила требуют проверки |
+| [troubleshooting/networkmanager-iwd-mac-randomization](troubleshooting/networkmanager-iwd-mac-randomization.md) | MAC-рандомизация с NetworkManager и iwd |
 
 ### ⚙️ Управление конфигурацией
 
@@ -109,40 +132,12 @@ emerge -av app-admin/chezmoi
 `chezmoi init --apply` [https://github.com/vovanbl411/dotfiles](https://github.com/vovanbl411/dotfiles)
 
 
-## Ключевые компоненты системы
+## Эталонная конфигурация
 
-### Профиль и ядро
-- **Gentoo Profile**: `default/linux/amd64/23.0/no-multilib/hardened/systemd` (stable)
-- **Hardened Kernel** — ядро с защищённой компиляцией (PIE, SSP, RELRO, Fortify)
-- **Gentoo Kernel** с savedconfig для кастомной оптимизации
-- **Dracut** для генерации initramfs и UKI
-- **systemd-boot** как загрузчик
-- **Secure Boot** с собственными ключами (sbctl)
-
-### Компилятор и инструменты
-- **LLVM 22** — основной системный компилятор с LTO-оптимизациями
-- **BOLT** — отключён; вернётся после стабильного релиза LLVM 23 (док `settings/bolt.md` описывает историческое состояние)
-- **lld** — основной линкер (`mold` остаётся для Rust-флагов на P-ядрах)
-- **ccache** — кэширование компиляции
-
-### Графика
-- **Niri** — тайловый Wayland-композитор
-- **Intel Xe** — целевой драйвер для графики Alder Lake
-- **Intel i915** — драйвер, используемый в текущей системе до перехода на Xe
-- **Zink** — OpenGL через Vulkan
-- **Mesa** с поддержкой VAAPI и Vulkan
-
-### Звук
-- **PipeWire** — современный звуковой сервер
-- **WirePlumber** — управление PipeWire
-
-### Безопасность
-- **Hardened Profile** — PIE, SSP, RELRO, Fortify Source
-- **LUKS2** — шифрование диска
-- **TPM 2.0** — автоматическая расшифровка
-- **AppArmor** — Mandatory Access Control
-- **Auditd** — аудит событий
-- **USBGuard** — контроль USB-устройств
+Версии, выбранные пакеты, аппаратные особенности и локальные политики ASUS
+ExpertBook B5402 находятся в
+[`systems/asus-b5402/`](systems/asus-b5402/README.md). Записи с
+`last_verified: null` нельзя считать результатом текущего аудита.
 
 ## Быстрые ссылки
 

@@ -1,3 +1,11 @@
+---
+kind: guide
+scope: general
+status: current
+last_verified: null
+verified_on: [asus-b5402]
+---
+
 # Руководство по управлению Gentoo Linux
 
 ## 1. Основы Portage и emerge
@@ -426,45 +434,12 @@ FEATURES="distcc"
 MAKEOPTS="-jN"   # N = общее количество потоков всех машин
 ```
 
-### 9.5. Актуальные per-package USE-флаги (живая система)
+### 9.5. Пример системной package policy
 
-Ниже — актуальные фрагменты из `/etc/portage/package.use/` для ключевых пакетов данной системы.
-
-#### Ядро и загрузка
-
-```makefile
-# /etc/portage/package.use/gentoo-kernel
-sys-kernel/gentoo-kernel initramfs savedconfig modules-sign -debug -generic
-```
-
-```makefile
-# /etc/portage/package.use/installkernel
-sys-kernel/installkernel systemd-boot ukify dracut uki -grub -efistub -ugrd -refind
-```
-
-#### Браузер и мультимедиа
-
-```makefile
-# /etc/portage/package.use/firefox
-media-libs/libpng apng
-media-libs/libvpx postproc
-www-client/firefox hwaccel pulseaudio openh264 jumbo-build system-pipewire wasm-sandbox system-av1 system-harfbuzz system-icu system-jpeg system-libevent system-libvpx system-webp system-png gmp-autoupdate llvm_slot_22 -llvm_slot_21 -telemetry
-```
-
-```makefile
-# /etc/portage/package.use/ffmpeg
-media-video/ffmpeg qsv x264 x265 drm gpl opus vorbis dav1d svt-av1 libaom libplacebo vpx webp zimg -sdl -opengl
-media-libs/x265 -12bit
-
-media-video/libva-utils vainfo
-```
-
-#### Звук
-
-```makefile
-# /etc/portage/package.use/pipewire
-media-video/pipewire sound-server udev pulseaudio gsettings pipewire-alsa liblc3 lv2 extra flatpak echo-cancel -ssl -libcamera
-```
+Точные правила `/etc/portage/package.use/` зависят от профиля, версий пакетов
+и выбранных функций. Записанная policy ASUS B5402 вынесена в
+[`systems/asus-b5402/system/boot-and-portage.md`](../systems/asus-b5402/system/boot-and-portage.md).
+Перед копированием правил проверь их через Portage resolver.
 
 ### 9.6. Бинарные пакеты (binhost)
 

@@ -1,6 +1,16 @@
+---
+kind: guide
+scope: general
+status: draft
+last_verified: null
+verified_on: [asus-b5402]
+---
+
 # Perplexity (AppImage) в меню приложений Niri/Wayland
 
-> Интеграция Perplexity AppImage в системное меню приложений и Noctalia Shell на чистом Wayland без XWayland.
+> Интеграция Perplexity AppImage в меню приложений на Wayland. Записанная
+> конфигурация ASUS B5402 находится в
+> [`systems/asus-b5402/applications.md`](../systems/asus-b5402/applications.md).
 
 ---
 
@@ -11,7 +21,7 @@ Perplexity распространяется как AppImage. После скач
 - поместить в постоянное место;
 - сделать исполняемым;
 - добавить в меню приложений (`.desktop`);
-- заставить работать нативно на Wayland, так как в системе отключён XWayland (`-xwayland` в `USE`).
+- настроить нативный Wayland-запуск, если в целевой системе отключён XWayland.
 
 ---
 
@@ -69,7 +79,7 @@ done
 [Desktop Entry]
 Name=Perplexity
 Comment=AI-powered search and chat
-Exec=env ELECTRON_OZONE_PLATFORM_HINT=wayland /home/vladimir/.local/bin/Perplexity.AppImage --ozone-platform=wayland --no-sandbox %U
+Exec=env ELECTRON_OZONE_PLATFORM_HINT=wayland /home/<username>/.local/bin/Perplexity.AppImage --ozone-platform=wayland --no-sandbox %U
 Terminal=false
 Type=Application
 Icon=Perplexity
@@ -77,7 +87,7 @@ StartupWMClass=Perplexity
 X-AppImage-Version=1.6.0
 MimeType=x-scheme-handler/perplexity-app;
 Categories=Network;Chat;
-TryExec=/home/vladimir/.local/bin/Perplexity.AppImage
+TryExec=/home/<username>/.local/bin/Perplexity.AppImage
 ```
 
 > **Важно**: `StartupWMClass=Perplexity` взят из внутреннего `.desktop` AppImage. Это позволяет Noctalia/Niri корректно группировать окно приложения.
@@ -157,7 +167,7 @@ cd ~/.local/bin
 Попробуй добавить `--enable-features=UseOzonePlatform` в `Exec=`:
 
 ```ini
-Exec=env ELECTRON_OZONE_PLATFORM_HINT=wayland /home/vladimir/.local/bin/Perplexity.AppImage --ozone-platform=wayland --enable-features=UseOzonePlatform --no-sandbox %U
+Exec=env ELECTRON_OZONE_PLATFORM_HINT=wayland /home/<username>/.local/bin/Perplexity.AppImage --ozone-platform=wayland --enable-features=UseOzonePlatform --no-sandbox %U
 ```
 
 Если не помогает — временно вернуть через XWayland (потребуется `gui-wm/xwayland` и USE-флаг `xwayland`).

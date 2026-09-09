@@ -1,6 +1,16 @@
+---
+kind: guide
+scope: general
+status: current
+last_verified: null
+verified_on: [asus-b5402]
+---
+
 # Управление приложениями: Flatpak & Flatseal
 
-В нашей системе GUI-приложения (мессенджеры, игры) устанавливаются через Flatpak. Это решает проблему зависимостей и обеспечивает безопасность за счет песочницы.
+Flatpak изолирует GUI-приложения и упрощает установку программ, которых нет в
+основном дереве Gentoo. Локальная политика ASUS B5402 записана в
+[системном разделе](../systems/asus-b5402/applications.md).
 
 ## 1. Установка и базовая настройка
 
@@ -15,7 +25,7 @@ flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.f
 
 Flatseal — это графическая утилита для управления разрешениями Flatpak-пакетов.
 
-Критически важные настройки для нашего сетапа (Wayland + Niri):
+Для Wayland и Niri проверь следующие разрешения:
 
 - **Socket**: Отключаем x11 и fallback-x11, оставляем только wayland. Это гарантирует, что приложение не будет пытаться запустить XWayland.
 - **Filesystem**: Для приложений вроде Discord или Obsidian разрешаем доступ только к нужным папкам (например, `xdg-run/app/com.discordapp.Discord`), а не ко всему home.

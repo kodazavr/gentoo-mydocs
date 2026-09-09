@@ -1,4 +1,15 @@
-# Running r2modman (AppImage) with Steam (Flatpak) on Gentoo/Niri
+---
+kind: troubleshooting
+scope: general
+status: current
+last_verified: null
+verified_on: [asus-b5402]
+---
+
+# Запуск r2modman AppImage со Steam Flatpak в Gentoo/Niri
+
+Записанное игровое окружение ASUS B5402 находится в
+[`systems/asus-b5402/applications.md`](../systems/asus-b5402/applications.md).
 
 ## Данный гайд описывает решение проблемы интеграции r2modman (запущенного как AppImage) со Steam, установленным через Flatpak, в окружении с Wayland/Niri
 
@@ -35,7 +46,7 @@ set -u FISH_USER_PATHS ~/.LOCAL/BIN $FISH_USER_PATHS
 
 * Steam Directory: Указывает на внутреннюю папку Flatpak:
    ~/.var/app/com.valvesoftware.Steam/.local/share/Steam
-* Steam Command: (если доступно в версии) установлено в steam или полный путь /home/vladimir/.local/bin/steam.
+* Steam Command: (если доступно в версии) установлено в steam или полный путь /home/<username>/.local/bin/steam.
 
 4. Параметры запуска в Steam (BepInEx Fix)
 Чтобы Proton разрешил загрузку BepInEx, в свойствах Risk of Rain 2 в Steam необходимо установить параметры запуска:

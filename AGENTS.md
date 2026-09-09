@@ -7,14 +7,23 @@
 
 ## 1. Что это за проект
 
-**`gentoo-mydocs`** — персональный runbook (руководство по эксплуатации) Gentoo Linux на ноутбуке ASUS ExpertBook B5402 (Intel Core i7-1260P, Alder Lake).
+**`gentoo-mydocs`** — практическая документация по Gentoo Linux, основанная
+на эксплуатации ASUS ExpertBook B5402 (Intel Core i7-1260P, Alder Lake).
 
 - Язык: **русский** (технические термины часто на английском).
 - Формат: Markdown без сборки/CI.
-- Цель: задокументировать реальное состояние рабочей станции, а не написать публичный учебник.
-- Аудитория: прежде всего сам автор; предполагается знакомство с Gentoo/Linux.
+- Цель: публиковать повторяемые руководства и отдельно вести состояние
+  эталонной системы.
+- Аудитория: пользователи, уже знакомые с Gentoo/Linux, и автор репозитория.
 
-### Ключевая философия системы
+Контракт структуры и метаданных находится в `DOCUMENTATION_POLICY.md`, а
+порядок подготовки изменений — в `CONTRIBUTING.md`. Не дублируй эти правила в
+новых служебных разделах.
+
+### Последнее записанное состояние эталонной системы
+
+Это контекст для навигации, а не актуальный аудит. Перед изменением
+пользовательской документации факты нужно подтвердить заново.
 
 - **Pure Wayland** — Niri, без X11.
 - **LLVM/LTO** — Clang 22 (основной), Thin LTO. Установлены слоты 21 (для `xwayland-satellite`/`rust-bin`) и 22 (основной); live-слоты 23/24 убраны после ребилда. BOLT отключён до стабильного релиза LLVM 23.
@@ -30,7 +39,9 @@
 ```text
 .
 ├── README.md                 # Главная страница и навигация
-├── ROADMAP.md                # Пока пустой (см. CHECKPOINT.md)
+├── DOCUMENTATION_POLICY.md   # Контракт структуры и метаданных
+├── CONTRIBUTING.md           # Правила подготовки изменений
+├── DOCUMENTATION_INVENTORY.md # Инвентаризация перед реструктуризацией
 ├── AGENTS.md                 # Этот файл
 ├── CHECKPOINT.md             # Текущее состояние и план работ
 ├── .markdownlint.json        # Конфиг markdownlint, но он в .gitignore
@@ -51,9 +62,7 @@
 │   └── snapper-backups.md    # Snapper: конфиги, хуки, таймеры
 │
 ├── hardware/                 # Железо
-│   ├── asus-expertbook.md    # ASUS ExpertBook B5402
-│   ├── cpu-optimization.md   # Alder Lake, CPU flags, BOLT
-│   └── intel-graphics.md     # Intel Xe / i915, Mesa, Vulkan
+│   └── intel-graphics.md     # Общее руководство Intel Xe / i915
 │
 ├── networking/               # Сеть
 │   ├── networkmanager-iwd.md # NetworkManager + iwd
@@ -71,21 +80,32 @@
 │   └── portage.md            # Большое руководство по Portage
 │
 ├── settings/                 # Прикладные настройки
-│   ├── bolt.md               # BOLT-оптимизация LLVM
 │   ├── connect-phone-android.md
 │   ├── firefox.md
 │   ├── perplexity.md         # Интеграция Perplexity AppImage
 │   ├── flatpak.md
 │   ├── gtk.md
-│   ├── nftables-docker-libvirt.md  # Актуальное решение (systemd path)
-│   ├── nftables.md           # Альтернативное/устаревающее решение
-│   ├── nm-iwd.md
 │   ├── obs-studio.md
 │   ├── r2modman.md
 │   └── scanner-driver.md
 │
-├── troubleshooting/          # Решение проблем и аудит
-│   └── system-vs-docs-drift-2026-06-13.md
+├── systems/                  # Состояние эталонных систем
+│   └── asus-b5402/
+│       ├── README.md
+│       ├── applications.md
+│       ├── desktop/
+│       ├── filesystem/
+│       ├── hardware/
+│       ├── networking/
+│       ├── security/
+│       └── system/
+│
+├── troubleshooting/          # Повторяемые решения проблем
+│   ├── docker-29-iptables-missing.md
+│   ├── docker-libvirt-nftables.md
+│   └── networkmanager-iwd-mac-randomization.md
+│
+├── archive/                  # Исторические материалы, не для применения
 │
 ├── .codex/                   # Служебный контекст для агентов
 │   ├── project-context.md
@@ -99,6 +119,10 @@
 ---
 
 ## 3. Стилевые соглашения
+
+Авторитетные правила публикации, frontmatter и разделения scope описаны в
+`DOCUMENTATION_POLICY.md` и `CONTRIBUTING.md`. Ниже остаются только краткие
+соглашения, нужные агенту во время правки.
 
 ### Язык и тон
 
@@ -213,16 +237,17 @@ systemd-cryptenroll
 ### Дрейф документации
 
 Главная проблема проекта — расхождение между документами и реальной системой.
-Актуальный аудит: `troubleshooting/system-vs-docs-drift-2026-06-13.md` и `CHECKPOINT.md`.
+Прежний аудит `troubleshooting/system-vs-docs-drift-2026-06-13.md` отсутствует
+и признан устаревшим источником. Не используй утверждения из старого handoff
+как подтверждение: состояние системы нужно проверять заново и датировать по
+`DOCUMENTATION_POLICY.md`.
 
 ---
 
 ## 6. Известные проблемы и нерешённые вопросы
 
-- `ROADMAP.md` пустой.
-- `settings/obs-studio.md` — USE-флаги актуализированы (2026-08-01), но пакет `media-video/obs-studio` не установлен.
-- Дублирование nftables: `settings/nftables.md` vs `settings/nftables-docker-libvirt.md`.
-- `settings/nftables.md` не указан в `README.md`.
+- `settings/obs-studio.md` требует технической проверки; состояние установки
+  вынесено в системный раздел.
 - `.gitignore`, `.kilocodemodes`, `.markdownlint.json` имеют executable bit.
 - `.markdownlint.json` игнорируется `.gitignore`.
 - Нет автоматических проверок (lint, ссылки).

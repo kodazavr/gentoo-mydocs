@@ -1,4 +1,15 @@
-# Документация: Настройка Noctalia Theme для GTK4 на Niri (Gentoo)
+---
+kind: troubleshooting
+scope: general
+status: current
+last_verified: null
+verified_on: [asus-b5402]
+---
+
+# Настройка темы Noctalia для GTK4 на Niri
+
+Конкретная палитра ниже служит примером. Записанная конфигурация ASUS B5402
+находится в [системном разделе](../systems/asus-b5402/desktop/environment.md).
 
 ## Оглавление
 1. [Предпосылки](#предпосылки)
@@ -13,9 +24,11 @@
 
 ## Предпосылки
 
-**Система:** Gentoo Linux  
-**Оконный менеджер:** Niri (Wayland)  
-**Тема:** Noctalia (кастомная цветовая схема)  
+**Система примера:** Gentoo Linux
+
+**Оконный менеджер:** Niri (Wayland)
+
+**Тема примера:** Noctalia (кастомная цветовая схема)
 **Проблема:** GTK4-приложения не применяют цвета Noctalia, прозрачные окна, артефакты отображения
 
 ### Исходные данные

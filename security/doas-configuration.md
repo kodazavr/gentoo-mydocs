@@ -1,6 +1,16 @@
+---
+kind: guide
+scope: general
+status: current
+last_verified: null
+verified_on: [asus-b5402]
+---
+
 # Настройка doas
 
-Вместо громоздкого sudo используется легковесный doas.
+`doas` предоставляет компактную конфигурацию повышения привилегий. Записанная
+политика ASUS B5402 находится в
+[системном разделе](../systems/asus-b5402/security/doas.md).
 
 ## Конфигурация
 
@@ -11,7 +21,7 @@
 permit persist :wheel
 
 # Сохранять переменные окружения для конкретного пользователя
-permit keepenv vladimir
+permit keepenv <username>
 
 # Разрешить выполнение snapper без ввода пароля (для снапшотов)
 permit persist :wheel as root cmd snapper

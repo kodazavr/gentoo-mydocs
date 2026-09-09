@@ -1,4 +1,20 @@
+---
+kind: troubleshooting
+scope: general
+status: draft
+last_verified: null
+verified_on: [asus-b5402]
+---
+
 # Решение конфликта маршрутизации: Docker + Libvirt на Gentoo (nftables)
+
+> Подсеть `10.0.0.0/24` ниже приведена как пример. Записанное окружение ASUS
+> B5402 и прежние версии компонентов вынесены в
+> [`systems/asus-b5402/networking/networkmanager-and-libvirt.md`](../systems/asus-b5402/networking/networkmanager-and-libvirt.md).
+>
+> **Черновик:** корректность правил с несколькими base chains требует
+> отдельной проверки. Не применяй конфигурацию к рабочему firewall без dry-run,
+> резервной копии и доступного способа отката.
 
 ## Проблема
 
@@ -280,7 +296,7 @@ include "/etc/nftables/rules/libvirt.nft"
 
 ---
 
-## Environment
+## Окружение прежней проверки
 
 - **OS:** Gentoo Linux, profile `default/linux/amd64/23.0/systemd`
 - **Kernel:** 6.x (Alder Lake, Clang/LLVM + ThinLTO)
@@ -338,7 +354,7 @@ $ doas emerge -C firewalld
 
 Если журнал содержит `failed to create NAT chain DOCKER: iptables not found`,
 проблема не в порядке запуска `nftables.service`. Используй
-[инструкцию для Docker 29](../troubleshooting/docker-29-iptables-missing.md).
+[инструкцию для Docker 29](docker-29-iptables-missing.md).
 
 ```bash
 # Проверить, что nftables загрузился до Docker

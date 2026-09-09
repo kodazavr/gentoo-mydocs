@@ -1,3 +1,11 @@
+---
+kind: guide
+scope: general
+status: current
+last_verified: 2026-09-09
+verified_on: [asus-b5402]
+---
+
 # Noctalia v5 для Niri
 
 Noctalia — нативная Wayland-оболочка вокруг Niri: панель и dock, launcher,
@@ -5,26 +13,23 @@ Control Center, уведомления, обои, экран блокировк�
 Серия v5 больше не использует Quickshell/QML: конфигурация хранится в TOML,
 а IPC вызывается через `noctalia msg`.
 
-На этой системе пакет `gui-apps/noctalia-5.0.1` установлен из репозитория
-`::guru`. Прежний локальный overlay `noctalia-local` удалён.
+Проверенная конфигурация ASUS B5402 описана отдельно в
+[системном журнале](../systems/asus-b5402/desktop/noctalia.md).
 
 ## 1. Репозиторий и обновление
 
-GURU уже подключён в Portage. Обновить метаданные репозитория и Noctalia можно
-отдельно от полного обновления системы:
+В Gentoo пакет доступен через репозиторий GURU. После подключения репозитория
+его метаданные и Noctalia можно обновить отдельно от всей системы:
 
 ```bash
 doas emaint sync -r guru
 doas emerge --ask --verbose --update --oneshot gui-apps/noctalia
 ```
 
-Пакет пока требует `~amd64`. Разрешение хранится в файле
-`/etc/portage/package.accept_keywords/noctalia`:
-
-```text
-gui-apps/noctalia                ~amd64
-dev-cpp/sdbus-c++                ~amd64
-```
+Если Portage сообщает, что пакет или его зависимость замаскированы по keyword,
+добавь только запрошенные правила в отдельный файл внутри
+`/etc/portage/package.accept_keywords/`. Не копируй список с другой системы
+без проверки текущего плана Portage.
 
 Проверка установленной версии и источника:
 
@@ -33,13 +38,14 @@ noctalia --version
 cat /var/db/pkg/gui-apps/noctalia-*/repository
 ```
 
-Ожидаемый результат: Noctalia `5.0.1`, репозиторий `guru`.
+Первая команда должна вывести установленную версию, вторая — имя репозитория,
+из которого Portage установил пакет.
 
-## 2. Конфигурация и state
+## 2. Конфигурация и состояние
 
 Собственный TOML Noctalia читает из `~/.config/noctalia/`. Все `*.toml` в
-этом каталоге объединяются; один `config.toml` — базовая и предпочтительная
-для этой машины конфигурация.
+этом каталоге объединяются. Файл `config.toml` подходит для базовой
+конфигурации, которую нужно хранить явно.
 
 Настройки, изменённые через GUI, сохраняются в
 `~/.local/state/noctalia/settings.toml` и имеют более высокий приоритет.

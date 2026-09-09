@@ -1,6 +1,18 @@
+---
+kind: guide
+scope: general
+status: current
+last_verified: null
+verified_on: [asus-b5402]
+---
+
 # Настройка сети: NetworkManager + iwd
 
-Для работы с беспроводными сетями используется связка NetworkManager (фронтенд) и iwd (беспроводной бэкенд). Это обеспечивает максимально быстрое сканирование сетей и надежное переподключение.
+NetworkManager может использовать iwd как беспроводной backend. Записанное
+состояние ASUS B5402 находится в
+[системном разделе](../systems/asus-b5402/networking/networkmanager-and-libvirt.md),
+а отдельная диагностика MAC-рандомизации — в
+[troubleshooting](../troubleshooting/networkmanager-iwd-mac-randomization.md).
 
 ## 1. Подготовка
 
@@ -34,7 +46,7 @@ ethernet.cloned-mac-address=stable
 
 ## 3. Управление сервисами
 
-Отключаем лишнее и запускаем наш стек:
+После проверки конфликтующих сетевых служб включи выбранный стек:
 
 ```bash
 doas systemctl enable --now iwd

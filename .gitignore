@@ -1,7 +1,6 @@
 .history
 .markdownlint.json
 .codex
-.kilocodemodes
 
 # Временные артефакты
 result-rebuild.md

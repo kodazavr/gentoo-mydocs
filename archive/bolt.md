@@ -1,4 +1,15 @@
+---
+kind: reference
+scope: system
+status: historical
+last_verified: null
+verified_on: [asus-b5402]
+---
+
 # Оптимизация Clang 23 с помощью BOLT на Gentoo (Alder Lake)
+
+> **Архив:** старый профиль BOLT больше не является действующей
+> конфигурацией. Не применяй его без нового профилирования.
 
 > ⚠️ **Важно**: BOLT **временно не используется** (с 2026-07). Этот документ — историческая справка по настройке BOLT на LLVM 23. Live-слоты LLVM 23/24 убраны из системы; основной toolchain — стабильный LLVM 22 без BOLT. Не применять инструкции «как есть» — требуется свежее профилирование.
 
@@ -57,7 +68,7 @@ ninja -j 8
 taskset -c 0-7 ninja -C /path/to/workload -j 8
 
 # Запись профиля
-doas env TMPDIR=/home/vladimir/tmp/ taskset -c 0-7 perf record \
+doas env TMPDIR=$HOME/tmp/ taskset -c 0-7 perf record \
     -e cycles:u \
     -j any,u \
     -a -F 1000 \
@@ -69,11 +80,11 @@ doas env TMPDIR=/home/vladimir/tmp/ taskset -c 0-7 perf record \
 Конвертируем сырой perf.data в формат .fdata, понятный BOLT.
 
 ```bash
-doas env TMPDIR=/home/vladimir/tmp/ \
-    perf2bolt /home/vladimir/llvm-project/build-profile/bin/clang-23 \
+doas env TMPDIR=$HOME/tmp/ \
+    perf2bolt $HOME/llvm-project/build-profile/bin/clang-23 \
     -p /path/to/workload/perf.data \
-    -o /home/vladimir/tmp/clang.fdata \
-    -w /home/vladimir/tmp/clang.yaml \
+    -o $HOME/tmp/clang.fdata \
+    -w $HOME/tmp/clang.yaml \
     -v 2
 ```
 
@@ -82,9 +93,9 @@ doas env TMPDIR=/home/vladimir/tmp/ \
 Применяем собранный профиль к монолитному бинарнику Clang.
 
 ```bash
-llvm-bolt /home/vladimir/llvm-project/build-profile/bin/clang-23 \
-    -o /home/vladimir/llvm-project/build-profile/bin/clang-23.bolt \
-    -data /home/vladimir/tmp/clang.fdata \
+llvm-bolt $HOME/llvm-project/build-profile/bin/clang-23 \
+    -o $HOME/llvm-project/build-profile/bin/clang-23.bolt \
+    -data $HOME/tmp/clang.fdata \
     -reorder-blocks=ext-tsp \
     -reorder-functions=hfsort+ \
     -split-functions \
@@ -112,7 +123,7 @@ mv bin/clang-23.bolt bin/clang-23
 
 ```bash
 doas mkdir -p /opt/llvm-bolt
-doas rsync -av --progress /home/vladimir/llvm-project/build-profile/ /opt/llvm-bolt/
+doas rsync -av --progress $HOME/llvm-project/build-profile/ /opt/llvm-bolt/
 ```
 
 ### 2. Настройка окружения Portage

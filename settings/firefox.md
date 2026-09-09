@@ -1,6 +1,16 @@
+---
+kind: guide
+scope: general
+status: draft
+last_verified: null
+verified_on: [asus-b5402]
+---
+
 # Веб-браузер: Firefox (Gentoo Way)
 
-Конфигурация Firefox направлена на максимальное использование возможностей LLVM 22, аппаратного ускорения в Wayland и минимизацию дисковых операций для ускорения интерфейса.
+Документ описывает сборку Firefox с LLVM, аппаратным ускорением Wayland и
+profile-sync-daemon. Действовавшие параметры ASUS B5402 записаны в
+[системном разделе](../systems/asus-b5402/applications.md).
 
 ## 1. Сборка и оптимизация (Clang & PGO)
 
@@ -15,13 +25,14 @@
 
 ## 2. Графический стек и Wayland
 
-Полный отказ от X11 в пользу нативного Wayland-окружения (Niri) и современных драйверов Intel.
+Для чистого Wayland-окружения Firefox можно собрать без X11.
 
-- **Backend**: Собран с `-X +wayland`. Никакого XWayland.
-- **HWACCEL**: `+hwaccel` включен. В связке с драйвером ядра (цель — `xe`, текущее состояние — `i915`) и Mesa (iris) это обеспечивает аппаратное декодирование видео с минимальной нагрузкой на CPU.
-- **Интеграция**: `+dbus`, `+pulseaudio` (через PipeWire) и `+system-pipewire` для бесшовной работы WebRTC и шаринга экрана.
+- **Backend**: используй `-X +wayland`, если XWayland не нужен.
+- **HWACCEL**: включи `+hwaccel` после проверки драйвера ядра, Mesa и VA-API.
+- **Интеграция**: `+dbus`, `+pulseaudio` через PipeWire и `+system-pipewire`
+  обеспечивают WebRTC и захват экрана.
 
-### package.use
+### Пример package.use
 
 ```makefile
 # /etc/portage/package.use/firefox
@@ -38,11 +49,11 @@ www-client/firefox hwaccel pulseaudio openh264 jumbo-build system-pipewire wasm-
 
 ## 4. Оптимизация профиля (Profile-sync-daemon)
 
-Для исключения задержек при чтении/записи базы данных (история, куки) и продления жизни SSD используется profile-sync-daemon (PSD).
+Для переноса профиля в tmpfs можно использовать profile-sync-daemon (PSD).
 
 ### Конфигурация (`~/.config/psd/psd.conf`)
 
-Браузер работает в tmpfs, используя Overlayfs для минимизации объема копируемых данных.
+В примере профиль работает в tmpfs через Overlayfs.
 
 ```bash
 # Использовать Overlayfs (быстрее и меньше RAM)
@@ -53,7 +64,7 @@ USE_SUSPSYNC="yes"
 BROWSERS=(firefox)
 ```
 
-### Статус системы
+### Проверка службы
 
 Управление осуществляется через пользовательский юнит systemd:
 
@@ -61,7 +72,7 @@ BROWSERS=(firefox)
 systemctl --user status psd.service
 ```
 
-Текущие показатели:
+Пример показателей, которые стоит контролировать:
 
 - **Размер профиля**: ~235M
 - **Overlayfs size**: ~69M (объем реально измененных данных в сессии)

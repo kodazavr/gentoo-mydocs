@@ -1,3 +1,11 @@
+---
+kind: troubleshooting
+scope: general
+status: current
+last_verified: 2026-09-09
+verified_on: [asus-b5402]
+---
+
 # Docker 29 не запускается: `iptables not found`
 
 ## Симптом
@@ -126,4 +134,4 @@ forwarding были выключены, а действующая конфигу
 ## References
 
 - [Docker: Firewall with nftables](https://docs.docker.com/engine/network/firewall-nftables/)
-- [Docker + Libvirt на этой системе](../settings/nftables-docker-libvirt.md)
+- [Docker + Libvirt и nftables](docker-libvirt-nftables.md)

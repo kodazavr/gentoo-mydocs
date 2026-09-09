@@ -1,6 +1,16 @@
-# Полное руководство по OBS Studio, FFmpeg и настройке кодеков в Gentoo Linux (Niri/Wayland)
+---
+kind: guide
+scope: general
+status: draft
+last_verified: null
+verified_on: []
+---
 
-> **Статус**: на момент синхронизации `media-video/obs-studio` **не установлен** в системе. Этот документ — *prospective-гайд*: USE-флаги и конфигурация подготовлены в `/etc/portage/package.use/obs-studio`, но установку и запуск нужно будет выполнить отдельно, когда понадобится OBS.
+# OBS Studio, FFmpeg и кодеки в Gentoo Linux
+
+> **Статус руководства:** технические рекомендации требуют проверки по
+> актуальным версиям пакетов. Записанное состояние ASUS B5402 вынесено в
+> [`systems/asus-b5402/applications.md`](../systems/asus-b5402/applications.md).
 
 ## Быстрый старт (для новичков) {: #быстрый-старт } {: .beginner }
 **Уровень сложности: Новичок**
@@ -840,6 +850,7 @@ time ffmpeg -f lavfi -i testsrc=size=1920x1080:rate=30 -c:v libx265 -preset fast
 
 # Тестирование производительности VAAPI
 time ffmpeg -hwaccel vaapi -hwaccel_device /dev/dri/renderD128 -f lavfi -i testsrc=size=1920x1080:rate=30 -vf 'format=nv12,hwupload' -c:v h264_vaapi -b:v 6000k -maxrate 6000k -bufsize 12000k -t 10 -y test_vaapi.mp4
+```
 
 Для определения правильного устройства VAAPI используйте:
 ```bash
@@ -888,12 +899,11 @@ free -h && cat /proc/meminfo | grep -i memavailable
 В OBS Studio можно включить отображение статистики:
 - Сервис → Статистика
 - Или в настройках: Дополнительно → Общие → Показывать статистику
-```
 
 ## Практические примеры конфигураций {: .intermediate }
 **Уровень сложности: Средний**
 
-### Оптимальные настройки для OBS Studio (основаны на вашем README)
+### Пример настроек OBS Studio
 
 #### Для стриминга:
 - **Тип кодировщика**: FFmpeg VAAPI H.264

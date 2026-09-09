@@ -1,10 +1,20 @@
+---
+kind: guide
+scope: general
+status: draft
+last_verified: null
+verified_on: [asus-b5402]
+---
+
 # Базовая настройка системы (Base System)
 
-Конфигурация окружения Gentoo с упором на производительность (LLVM/LTO), современные линкеры и кэширование.
+Пример конфигурации Gentoo с LLVM/LTO, LLD и ccache. Значения нужно подобрать
+под процессор и доступную память. Параметры ASUS B5402 записаны в
+[системном разделе](../systems/asus-b5402/system/boot-and-portage.md).
 
 ## 1. Настройка тулчейна (`/etc/portage/make.conf`)
 
-В данной системе используется стек LLVM вместо классического GCC. Глобальный линкер — LLD; ccache включён для ускорения повторных сборок.
+Ниже приведён профиль со стеком LLVM, глобальным линкером LLD и ccache.
 
 ```makefile
 # Глобальный тулчейн LLVM
@@ -94,7 +104,7 @@ SECUREBOOT_SIGN_CERT="/var/lib/sbctl/keys/db/db.pem"
 permit persist :wheel
 
 # Сохранять переменные окружения для конкретного пользователя
-permit keepenv vladimir
+permit keepenv <username>
 
 # Разрешить выполнение snapper без ввода пароля (для снапшотов)
 permit persist :wheel as root cmd snapper

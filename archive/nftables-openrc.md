@@ -1,4 +1,16 @@
+---
+kind: troubleshooting
+scope: general
+status: historical
+last_verified: null
+verified_on: []
+---
+
 # Решение конфликта маршрутизации: Docker + Libvirt (nftables)
+
+> **Архив:** документ описывает вариант для OpenRC. Действующее руководство
+> для systemd находится в
+> [`troubleshooting/docker-libvirt-nftables.md`](../troubleshooting/docker-libvirt-nftables.md).
 
 ## Описание проблемы
 

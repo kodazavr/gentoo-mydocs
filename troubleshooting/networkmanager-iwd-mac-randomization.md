@@ -1,4 +1,15 @@
+---
+kind: troubleshooting
+scope: general
+status: current
+last_verified: 2026-03-03
+verified_on: [asus-b5402]
+---
+
 # Настройка MAC-рандомизации и iwd в NetworkManager (Gentoo)
+
+Конфигурация ASUS B5402 вынесена в
+[`systems/asus-b5402/networking/networkmanager-and-libvirt.md`](../systems/asus-b5402/networking/networkmanager-and-libvirt.md).
 
 ## Содержание
 1. [Цель](#цель)
@@ -51,7 +62,7 @@ wifi.mac-address-randomization=2
 lspci -k | grep -A3 "Network controller"
 ```
 
-**Пример вывода (Intel AX201 — поддерживается):**
+**Пример вывода для поддерживаемого Intel AX201:**
 ```
 00:14.3 Network controller: Intel Corporation Alder Lake-P PCH CNVi WiFi (rev 01)
     DeviceName: Onboard - Ethernet
