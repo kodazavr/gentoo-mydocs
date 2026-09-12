@@ -34,6 +34,8 @@ verified_on: [asus-b5402]
 
 - [Btrfs и Snapper](filesystem/layout-and-snapshots.md)
 - [UKI, toolchain и Portage](system/boot-and-portage.md)
+- [Обновление BIOS/UEFI](system/bios-update.md) — проверенная процедура для
+  Secure Boot, `sbctl`, LUKS2 и TPM2.
 - [NetworkManager, Docker и Libvirt](networking/networkmanager-and-libvirt.md)
 - [Политика doas](security/doas.md)
 - [Приложения](applications.md)

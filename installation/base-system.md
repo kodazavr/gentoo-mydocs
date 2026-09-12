@@ -29,8 +29,10 @@ RANLIB="llvm-ranlib"
 COMMON_FLAGS="-march=alderlake -O3 -flto=thin -pipe -mno-kl -mno-pconfig -mno-sgx -mno-widekl -mshstk"
 CFLAGS="${COMMON_FLAGS}"
 CXXFLAGS="${COMMON_FLAGS}"
-FCFLAGS="${COMMON_FLAGS}"
-FFLAGS="${COMMON_FLAGS}"
+# GNU Fortran не понимает `-flto=thin` (расширение Clang) — отдельный набор без LTO
+FORTRAN_FLAGS="-march=alderlake -O3 -pipe -mno-kl -mno-pconfig -mno-sgx -mno-widekl -mshstk"
+FCFLAGS="${FORTRAN_FLAGS}"
+FFLAGS="${FORTRAN_FLAGS}"
 CPU_FLAGS_X86="aes avx avx2 avx_vnni bmi1 bmi2 f16c fma3 mmx mmxext pclmul popcnt rdrand sha sse sse2 sse3 sse4_1 sse4_2 ssse3 vpclmulqdq"
 
 # Параллельная сборка
@@ -43,55 +45,48 @@ GOAMD64="v3"
 CGO_CFLAGS="${CFLAGS}"
 CGO_CXXFLAGS="${CXXFLAGS}"
 CGO_LDFLAGS="${LDFLAGS}"
-GOFLAGS="-buildmode=pie"
 
-# ccache настройки
-FEATURES="${FEATURES} ccache" 
+# ccache настройки (сжатие включено по умолчанию)
+FEATURES="${FEATURES} ccache"
 CCACHE_DIR="/var/tmp/ccache"
 CCACHE_SIZE="50G"
-CCACHE_COMPRESS="1"
-CCACHE_COMPRESS_LEVEL="3"
-CCACHE_SLOPPINESS="include_file_mtime,include_file_ctime,time_macros,file_macro,pch_defines"
+CCACHE_COMPRESSLEVEL="3"
+CCACHE_SLOPPINESS="include_file_mtime,include_file_ctime,time_macros,pch_defines"
 
-USE="\
-# Графика и дисплей
-  wayland gles2 egl mapi opencl vpp vaapi vulkan zink \
-# Оптимизация
-  pgo lto custom-cflags asm \
-# Аудио/видео
-  alsa ffmpeg gstreamer pipewire sound-server v4l screencast icu \
-# Сеть и устройства
-  bluetooth wifi networkmanager udisks2 dist-kernel \
-# Файловые системы и storage
-  btrfs zstd \
-# Системные (systemd, dbus, уведомления)
-  systemd dbus libnotify policykit acpi \
-# Desktop/input
-  libinput \
-# Безопасность
-  tpm cryptsetup openssl secureboot apparmor audit bpf nftables verify-sig hardened \
-# Отключенные (X11, elogind)
-  -X -xwayland -elogind -consolekit -pulseaudio -telemetry"
+# Комментарии — только вне строки USE: внутри кавычек они попадают в переменную.
+USE="
+  wayland gles2 egl opencl vaapi vulkan
+  pgo lto custom-cflags asm
+  alsa ffmpeg gstreamer pipewire sound-server v4l screencast icu
+  bluetooth wifi dist-kernel
+  btrfs zstd
+  systemd dbus policykit
+  libinput
+  tpm cryptsetup openssl secureboot apparmor audit bpf nftables verify-sig hardened
+  -X -xwayland -elogind -consolekit -pulseaudio -telemetry
+"
 
-# Видео и графика
-VIDEO_CARDS="intel iris zink"
+# Видео и графика: значение intel уже включает драйверы iris и crocus
+VIDEO_CARDS="intel zink"
 INPUT_DEVICES="libinput"
 
 ABI_X86="64"
 LC_MESSAGES="C.UTF-8"
 
-GENTOO_MIRRORS="http://ftp.byfly.by/pub/gentoo-distfiles/ \
-    ftp://ftp.byfly.by/pub/gentoo-distfiles/ \
-    rsync://ftp.byfly.by/gentoo/ \
-    https://mirror.yandex.ru/gentoo-distfiles/ \
-    http://mirror.yandex.ru/gentoo-distfiles/ \
-    ftp://mirror.yandex.ru/gentoo-distfiles/"
+GENTOO_MIRRORS="https://mirror.yandex.ru/gentoo-distfiles/ \
+    https://distfiles.gentoo.org/"
 
 SECUREBOOT_SIGN_KEY="/var/lib/sbctl/keys/db/db.key"
 SECUREBOOT_SIGN_CERT="/var/lib/sbctl/keys/db/db.pem"
 ```
 
 > **Примечание**: ранее в качестве глобального линкера использовался `mold`. Сейчас системная сборка идёт через `lld`; `mold` остаётся в качестве линкера для Rust-флагов в `env/p-cores`.
+
+> **Примечание**: `GOFLAGS="-buildmode=pie"` в `make.conf` не нужен: ebuild'ы Go собираются с `GOFLAGS` из `go-env.eclass`, который на amd64 уже включает `-buildmode=pie`.
+
+> **Примечание**: вики Gentoo не рекомендует включать ccache глобально: кэш насыщается, и доля попаданий падает; для отдельных пакетов его включают через `/etc/portage/package.env`.
+
+> **Примечание**: при нескольких слотах LLVM линкер для Rust фиксируют абсолютным путём (`-C linker=/usr/lib/llvm/22/bin/clang`), чтобы сборка не зависела от того, какой слот оказывается первым в `PATH`.
 
 ## 2. Повышение привилегий (doas)
 
