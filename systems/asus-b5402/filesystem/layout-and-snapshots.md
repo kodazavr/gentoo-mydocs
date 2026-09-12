@@ -8,14 +8,28 @@ verified_on: [asus-b5402]
 
 # Btrfs и Snapper на ASUS ExpertBook B5402
 
-Это перенесённая запись конфигурации, а не результат текущего аудита.
+Перенесённая запись конфигурации. Раздел Btrfs подтверждён монтированием
+2026-09-12; раздел Snapper не перепроверялся.
 
 ## Btrfs
 
-В документации зафиксированы субволюмы `@`, `@home`, `@snapshots`,
+Субволюмы подтверждены монтированием 2026-09-12: `@`, `@home`, `@snapshots`,
 `@var_log`, `@var_cache`, `@distfiles`, `@ccache`, `@portage_tree`, `@docker`,
-`@libvirt` и `@portage_tmp`. Для NVMe указаны `compress=zstd:3`, `noatime` и
-`discard=async`; `/var/tmp/portage` описан как tmpfs размером 16 GiB.
+`@libvirt` и `@portage_tmp`. Опции NVMe — `compress=zstd:3`, `noatime`,
+`discard=async`, `space_cache=v2`.
+
+Сборочная цепочка Portage вынесена из снапшотируемого корня:
+
+| Субволюм | Точка монтирования | Назначение |
+|---|---|---|
+| `@ccache` | `/var/tmp/ccache` | кэш компилятора; `nodatacow` на каталоге подтверждён |
+| `@portage_tmp` | `/var/tmp/portage-disk` | временные файлы тяжёлых сборок |
+| `@distfiles` | `/var/cache/distfiles` | исходные коды пакетов |
+| `@var_cache` | `/var/cache` | прочий системный кэш |
+| `@portage_tree` | `/var/db/repos/gentoo` | дерево Gentoo |
+
+Рабочая директория `/var/tmp/portage` — tmpfs размером 16 GiB
+(`uid=portage`, `nosuid`, `nodev`, `noatime`), подтверждена 2026-09-12.
 
 ## Snapper
 

@@ -33,6 +33,10 @@ verified_on: [asus-b5402]
   (`mapi`, `vpp`, `zink`, `networkmanager`, `udisks2`, `libnotify`, `acpi`) —
   см. [аудит 2026-09-12](../audits/2026-09-12-make-conf-policy.md). Драйвер
   Zink не затронут: он управляется `video_cards_zink` из `VIDEO_CARDS`.
+- Ещё четыре флага перенесены точечно в `package.use`: `sound-server`
+  (pipewire), `screencast` (niri), `lto` (gcc), `gles2` (gst-plugins-base,
+  mesa-progs). `egl`, `ffmpeg`, `v4l`, `pgo`, `custom-cflags` и `btrfs`
+  остаются глобальной политикой.
 
 ## Загрузка
 
@@ -52,29 +56,31 @@ verified_on: [asus-b5402]
 
 ## Package policy
 
-В исходной записи использовались следующие правила. Перед применением их
-нужно заново проверить Portage resolver.
+Подтверждено сверкой с живой системой 2026-09-12 (файлы
+`/etc/portage/package.use/`).
 
 ```makefile
-# /etc/portage/package.use/gentoo-kernel
-sys-kernel/gentoo-kernel initramfs savedconfig modules-sign -debug -generic
-
-# /etc/portage/package.use/installkernel
-sys-kernel/installkernel systemd-boot ukify dracut uki -grub -efistub -ugrd -refind
-
-# /etc/portage/package.use/firefox
-media-libs/libpng apng
-media-libs/libvpx postproc
-www-client/firefox hwaccel pulseaudio openh264 jumbo-build system-pipewire wasm-sandbox system-av1 system-harfbuzz system-icu system-jpeg system-libevent system-libvpx system-webp system-png gmp-autoupdate llvm_slot_22 -llvm_slot_21 -telemetry
-
-# /etc/portage/package.use/ffmpeg
-media-video/ffmpeg qsv x264 x265 drm gpl opus vorbis dav1d svt-av1 libaom libplacebo vpx webp zimg -sdl -opengl
-media-libs/x265 -12bit
-media-video/libva-utils vainfo
-
-# /etc/portage/package.use/pipewire
-media-video/pipewire sound-server udev pulseaudio gsettings pipewire-alsa liblc3 lv2 extra flatpak echo-cancel -ssl -libcamera
+# /etc/portage/package.use/20-kernel-boot
+sys-kernel/gentoo-kernel      initramfs savedconfig modules-sign modules-compress -debug
+sys-kernel/installkernel      systemd-boot ukify dracut uki -grub -efistub -ugrd -refind
+sys-kernel/linux-firmware     compress-zstd deduplicate -savedconfig
+sys-firmware/intel-microcode  dist-kernel initramfs split-ucode hostonly -vanilla
 ```
+
+- Прежний флаг `-generic` у gentoo-kernel устарел: в текущих ebuild его
+  нет (схема сменилась на `generic-uki`), из живой конфигурации он убран.
+- `savedconfig` ядра хранится в `/etc/portage/savedconfig/sys-kernel/`:
+  базовый файл `gentoo-kernel` и версионные `gentoo-kernel-7.2.3/.4/.5`
+  (приоритет PF > PN по правилу eclass); файлы `*.bak` не используются.
+- При выключенном `savedconfig` у linux-firmware сохранённый список
+  `linux-firmware-20260810` не применяется — судьба файла не решена.
+- Точечные `llvm_slot_*`-правила удалены 2026-09-12: при установленных
+  слотах LLVM 22 и 23 все потребители (mesa, mesa_clc, niri, bpftool, perf,
+  firefox, xwayland-satellite) резолвятся в 22, потому что слот 23 их
+  ebuild'ами ещё не поддерживается. Когда появится `llvm_slot_23`, дефолты
+  перевернутся на него сами — в этот момент решать вопрос перехода.
+- `video_cards_i915` у mesa удалён 2026-09-12: легаси-драйвер Gen2–Gen5,
+  графику Alder Lake обслуживает iris (значение `intel` в `VIDEO_CARDS`).
 
 ## Общие руководства
 

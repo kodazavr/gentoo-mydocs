@@ -54,10 +54,11 @@ CCACHE_COMPRESSLEVEL="3"
 CCACHE_SLOPPINESS="include_file_mtime,include_file_ctime,time_macros,pch_defines"
 
 # Комментарии — только вне строки USE: внутри кавычек они попадают в переменную.
+# Точечные флаги (sound-server, screencast, lto, gles2) заданы в package.use.
 USE="
-  wayland gles2 egl opencl vaapi vulkan
-  pgo lto custom-cflags asm
-  alsa ffmpeg gstreamer pipewire sound-server v4l screencast icu
+  wayland egl opencl vaapi vulkan
+  pgo custom-cflags asm
+  alsa ffmpeg gstreamer pipewire v4l icu
   bluetooth wifi dist-kernel
   btrfs zstd
   systemd dbus policykit
