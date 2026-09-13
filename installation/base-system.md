@@ -1,8 +1,8 @@
 ---
 kind: guide
 scope: general
-status: draft
-last_verified: null
+status: current
+last_verified: 2026-09-13
 verified_on: [asus-b5402]
 ---
 
@@ -39,7 +39,7 @@ CPU_FLAGS_X86="aes avx avx2 avx_vnni bmi1 bmi2 f16c fma3 mmx mmxext pclmul popcn
 MAKEOPTS="-j14 -l10"
 
 # Флаги компиляторов
-RUSTFLAGS="-C target-cpu=alderlake -C opt-level=3 -C linker=clang -C link-arg=-fuse-ld=lld"
+RUSTFLAGS="-C target-cpu=alderlake -C opt-level=3 -C linker=/usr/lib/llvm/22/bin/clang -C link-arg=-fuse-ld=lld"
 LDFLAGS="-Wl,-O1 -Wl,--as-needed -fuse-ld=lld"
 GOAMD64="v3"
 CGO_CFLAGS="${CFLAGS}"
@@ -59,7 +59,7 @@ USE="
   wayland egl opencl vaapi vulkan
   pgo custom-cflags asm
   alsa ffmpeg gstreamer pipewire v4l icu
-  bluetooth wifi dist-kernel
+  bluetooth dist-kernel
   btrfs zstd
   systemd dbus policykit
   libinput

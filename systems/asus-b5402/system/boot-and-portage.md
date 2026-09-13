@@ -13,8 +13,7 @@ verified_on: [asus-b5402]
 
 ## Toolchain
 
-Подтверждено аудитами `make.conf` от 2026-09-11: [основной](../audits/2026-09-11-make-conf-audit.md)
-и [очистка](../audits/2026-09-11-make-conf-cleanup.md).
+Подтверждено аудитами `make.conf` от 2026-09-11: основной аудит и очистка.
 
 - Основной toolchain — LLVM/Clang/LLD 22 с `-march=alderlake`, `-O3` и
   ThinLTO; для Fortran — отдельный набор флагов без LTO.
@@ -31,7 +30,7 @@ verified_on: [asus-b5402]
   `MAKEOPTS="-j14 -l10"` — с запасом под гибридные ядра и память.
 - Из глобального `USE` удалены семь флагов без установленных потребителей
   (`mapi`, `vpp`, `zink`, `networkmanager`, `udisks2`, `libnotify`, `acpi`) —
-  см. [аудит 2026-09-12](../audits/2026-09-12-make-conf-policy.md). Драйвер
+  аудит 2026-09-12. Драйвер
   Zink не затронут: он управляется `video_cards_zink` из `VIDEO_CARDS`.
 - Ещё четыре флага перенесены точечно в `package.use`: `sound-server`
   (pipewire), `screencast` (niri), `lto` (gcc), `gles2` (gst-plugins-base,

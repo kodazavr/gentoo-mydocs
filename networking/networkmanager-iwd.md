@@ -2,7 +2,7 @@
 kind: guide
 scope: general
 status: current
-last_verified: null
+last_verified: 2026-09-13
 verified_on: [asus-b5402]
 ---
 
@@ -21,7 +21,7 @@ NetworkManager может использовать iwd как беспровод
 Файл: `/etc/portage/package.use/networkmanager`
 
 ```makefile
-net-misc/networkmanager -iptables -dhcpcd -wext concheck tools connection-sharing iwd audit psl
+net-misc/networkmanager -iptables -dhcpcd -wext -modemmanager -ppp -bluetooth concheck tools connection-sharing iwd audit psl
 net-vpn/networkmanager-openvpn -gtk
 ```
 

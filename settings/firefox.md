@@ -1,8 +1,8 @@
 ---
 kind: guide
 scope: general
-status: draft
-last_verified: null
+status: current
+last_verified: 2026-09-13
 verified_on: [asus-b5402]
 ---
 
@@ -18,9 +18,10 @@ profile-sync-daemon. Действовавшие параметры ASUS B5402 з
 
 | USE-flag | Описание |
 |---------|----------|
-| `+clang +llvm_slot_22` | Сборка компилятором LLVM 22. |
+| `clang` | Сборка компилятором LLVM. Флаг включён по умолчанию в ebuild'е, отдельный пин слота не нужен. |
 | `+pgo` | Profile-Guided Optimization. Сборка на основе реальных профилей использования (прирост скорости ~10%). |
-| `+jumbo-build` | Ускорение компиляции за счет объединения исходных файлов. |
+| `-jumbo-build` | Ускорение компиляции за счёт объединения исходных файлов — выключено. |
+| `-wifi -jpegxl` | Выключены геолокация по Wi-Fi и поддержка JPEG XL. |
 | `+system-lib*` | Использование системных библиотек (jpeg, png, webp, av1) для уменьшения оверхеда. |
 
 ## 2. Графический стек и Wayland
@@ -35,10 +36,10 @@ profile-sync-daemon. Действовавшие параметры ASUS B5402 з
 ### Пример package.use
 
 ```makefile
-# /etc/portage/package.use/firefox
-media-libs/libpng apng
-media-libs/libvpx postproc
-www-client/firefox hwaccel pulseaudio openh264 jumbo-build system-pipewire wasm-sandbox system-av1 system-harfbuzz system-icu system-jpeg system-libevent system-libvpx system-webp system-png gmp-autoupdate llvm_slot_22 -llvm_slot_21 -telemetry
+# /etc/portage/package.use/40-multimedia (тематический файл; подойдёт и отдельный файл firefox)
+media-libs/libpng          apng
+media-libs/libvpx          postproc
+www-client/firefox         hwaccel pulseaudio openh264 system-pipewire wasm-sandbox system-av1 system-harfbuzz system-icu system-jpeg system-libevent system-libvpx system-webp system-png -telemetry -wifi -jpegxl -jumbo-build
 ```
 
 ## 3. Безопасность
