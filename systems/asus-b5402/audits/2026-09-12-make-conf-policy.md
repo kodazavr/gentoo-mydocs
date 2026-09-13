@@ -127,6 +127,31 @@ USE](2026-09-11-use-flags-audit.md). Владелец системы подтв�
 `savedconfig/sys-kernel/linux-firmware-20260810` при выключенном USE и
 файлы `*.bak` рядом с ним владелец осознанно оставил до отдельного решения.
 
+## Аудит USE установленного софта — батч 1 и вычистка мёртвых токенов (2026-09-12)
+
+По-пакетный аудит USE стартовал батчами по 5 пакетов. Батч 1: mesa,
+firefox, pipewire, ffmpeg, niri. Источник списка флагов — VDB `IUSE` и
+ebuild установленной версии: `equery uses` показал неполный список
+(пропустил, например, `jumbo-build` у firefox).
+
+Разбор батча 1: mesa, ffmpeg и niri чисты; у pipewire найден мёртвый
+`liblc3` (кодек стал безусловной зависимостью); у firefox избыточный
+`jumbo-build` совпадает с дефолтом. Вкусовые решения владельца: firefox
+`-wifi` (Mozilla Location Service закрыт в 2024) и явный `-jpegxl`;
+`lavapipe` (mesa), `loudness` (pipewire) и `jpegxl` (ffmpeg) не включаются.
+
+Механическая сверка всех токенов `package.use` против VDB `IUSE` нашла
+шесть мёртвых — флаги, удалённые upstream: `bubblewrap -suid`,
+`sbctl -test`, `xdg-desktop-portal-gnome -nautilus`, `docker -iptables`,
+`libvirt -iptables`, `pipewire liblc3`. Владелец удалил их все; `cpptrace`
+(пакет не установлен, правило на будущее) и файл `90-prospective` оставлены
+осознанно. Для ffmpeg добавлен `-gnutls`: при включённом глобальном
+`openssl` gnutls игнорировался ebuild'ом.
+
+Проверка после правок: повторная сверка чиста; resolver-план
+`emerge -avuDN @world --pretend` — 8 обновлений версий и ровно две ожидаемые
+переустановки (ffmpeg из-за `-gnutls`, firefox из-за `-wifi`).
+
 ## Источники
 
 - [аудит глобальных USE 2026-09-11](2026-09-11-use-flags-audit.md)
