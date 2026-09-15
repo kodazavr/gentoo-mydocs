@@ -46,6 +46,37 @@ AuditFilePath=/var/log/usbguard/usbguard-audit.log
 
 > **Важно:** у `usbguard-daemon.conf` нет опций `IpAddress` / `Port`. IPC — это Unix domain socket, а не TCP. При наличии таких строк демон стартовать не будет. См. [usbguard.github.io: Configuration](https://usbguard.github.io/documentation/configuration) и [RHEL 8 Security hardening: USBGuard](https://docs.redhat.com/en/documentation/red_hat_enterprise_linux/8/html/security_hardening/protecting-systems-against-intrusive-usb-devices_security-hardening).
 
+### `.keep`-файлы в каталогах конфигурации
+
+Пакет Gentoo может оставить пустые файлы-заглушки
+`.keep_sys-apps_usbguard-0` для сохранения каталогов. Для USBGuard это не
+конфигурация: имя файла в `IPCAccessControl.d` должно обозначать пользователя,
+UID или группу, а файлы в `rules.d` следует начинать с двузначного номера.
+`.keep` в `IPCAccessControl.d` вызывает предупреждение о некорректном имени.
+Одноимённый файл в `rules.d` не является правилом и также не нужен.
+
+Если в журнале есть это предупреждение, удали только файлы-заглушки:
+
+```bash
+doas rm -- \
+  /etc/usbguard/IPCAccessControl.d/.keep_sys-apps_usbguard-0 \
+  /etc/usbguard/rules.d/.keep_sys-apps_usbguard-0
+```
+
+Не удаляй реальные ACL-файлы в `IPCAccessControl.d`, правила в `rules.d` или
+`/etc/usbguard/rules.conf`. Не перезапускай USBGuard только ради удаления
+предупреждений: при `PresentDevicePolicy=apply-policy` это повторно применит
+политику к подключённым устройствам. Проверь журнал после следующей обычной
+загрузки:
+
+```bash
+doas journalctl -b -u usbguard --no-pager
+```
+
+Если `.keep`-файлы вернутся после обновления `sys-apps/usbguard`, сообщи об
+этом в Gentoo Bugzilla: пакет помещает файлы-заглушки в каталоги, которые
+USBGuard обрабатывает как конфигурацию.
+
 ### 3. Создание начальных правил
 
 ```bash

@@ -61,6 +61,7 @@ verified_on: [asus-b5402]
 | [desktop/niri](desktop/niri.md) | Тайловый Wayland-композитор Niri со скроллингом окон |
 | [desktop/noctalia-shell](desktop/noctalia-shell.md) | Нативная Wayland-оболочка Noctalia v5 для Niri |
 | [desktop/wayland-portals](desktop/wayland-portals.md) | Настройка XDG Desktop Portals для скринкастинга и диалогов |
+| [desktop/default-applications](desktop/default-applications.md) | Приложения по умолчанию, MIME-типы и URI-схемы через XDG |
 
 ### 💾 Файловая система
 
@@ -119,6 +120,7 @@ verified_on: [asus-b5402]
 | [troubleshooting/docker-29-iptables-missing](troubleshooting/docker-29-iptables-missing.md) | Docker 29 не запускается из-за отсутствия команды `iptables` |
 | [troubleshooting/docker-libvirt-nftables](troubleshooting/docker-libvirt-nftables.md) | Черновик решения конфликта Docker и Libvirt в nftables; правила требуют проверки |
 | [troubleshooting/networkmanager-iwd-mac-randomization](troubleshooting/networkmanager-iwd-mac-randomization.md) | MAC-рандомизация с NetworkManager и iwd |
+| [troubleshooting/luks-tpm2-unlock-after-uki-rebuild](troubleshooting/luks-tpm2-unlock-after-uki-rebuild.md) | TPM2-авторазблокировка LUKS ломается после смены cmdline/пересборки UKI |
 
 ### ⚙️ Управление конфигурацией
 

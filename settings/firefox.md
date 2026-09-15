@@ -33,6 +33,9 @@ profile-sync-daemon. Действовавшие параметры ASUS B5402 з
 - **Интеграция**: `+dbus`, `+pulseaudio` через PipeWire и `+system-pipewire`
   обеспечивают WebRTC и захват экрана.
 
+Ассоциации Firefox для HTTP(S), HTML и PDF настраиваются через
+[приложения по умолчанию (XDG MIME)](../desktop/default-applications.md).
+
 ### Пример package.use
 
 ```makefile

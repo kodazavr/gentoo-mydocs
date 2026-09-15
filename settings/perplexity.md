@@ -201,3 +201,4 @@ xdg-mime default perplexity.desktop x-scheme-handler/perplexity-app
 - [flatpak](flatpak.md) — другие GUI-приложения в системе устанавливаются через Flatpak.
 - [r2modman](r2modman.md) — пример интеграции AppImage со Steam Flatpak.
 - [niri](../desktop/niri.md) — конфигурация Wayland-композитора.
+- [Приложения по умолчанию](../desktop/default-applications.md) — общие MIME-ассоциации и URI-схемы через XDG.

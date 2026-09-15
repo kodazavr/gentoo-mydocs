@@ -2,7 +2,7 @@
 kind: system
 scope: system
 status: current
-last_verified: 2026-09-09
+last_verified: 2026-09-15
 verified_on: [asus-b5402]
 ---
 
@@ -20,6 +20,26 @@ verified_on: [asus-b5402]
 - Конфигурация хранится в `~/.config/noctalia/config.toml`.
 - Настройки, изменённые через GUI, сохраняются в
   `~/.local/state/noctalia/settings.toml` и имеют более высокий приоритет.
+
+## Подготовленный переход в личный оверлей
+
+Публичный [noctalia-overlay](https://github.com/vovanbl411/noctalia-overlay)
+подключён к Portage. Проверка от 2026-09-15 показала, что следующим кандидатом
+на обновление выбран `gui-apps/noctalia-5.1.0::noctalia-overlay` вместо
+`5.0.1::guru`:
+
+```text
+[ebuild     U ~] gui-apps/noctalia-5.1.0::noctalia-overlay [5.0.1::guru] USE="jemalloc"
+```
+
+Это только результат `emerge --pretend`: обновление ещё не выполнялось. Пока
+не завершён merge, установленным пакетом остаётся `gui-apps/noctalia-5.0.1`
+из `guru`.
+
+Структура, подключение и политика обновлений описаны в README
+`noctalia-overlay`. Оверлей отслеживает только стабильные релизы; будущая
+автоматизация будет создавать Issue о новом релизе и не станет менять ebuild'ы
+или установленный пакет.
 
 ## Keyword-политика
 
@@ -53,4 +73,5 @@ guru
 ## История перехода
 
 Версия `5.0.1` заменила Noctalia Shell `4.7.7`. После перехода на пакет из
-GURU локальный overlay `noctalia-local` больше не используется.
+GURU локальный overlay `noctalia-local` был удалён. Текущий
+`noctalia-overlay` — отдельный публичный оверлей, созданный позднее.

@@ -2,7 +2,7 @@
 kind: guide
 scope: general
 status: current
-last_verified: 2026-09-09
+last_verified: 2026-09-15
 verified_on: [asus-b5402]
 ---
 
@@ -16,15 +16,25 @@ Control Center, уведомления, обои, экран блокировк�
 Проверенная конфигурация ASUS B5402 описана отдельно в
 [системном журнале](../systems/asus-b5402/desktop/noctalia.md).
 
-## 1. Репозиторий и обновление
+## 1. Источник пакета и обновление
 
-В Gentoo пакет доступен через репозиторий GURU. После подключения репозитория
-его метаданные и Noctalia можно обновить отдельно от всей системы:
+Noctalia распространяется через дополнительные репозитории Gentoo. GURU —
+один из возможных источников, но он не обязан быть единственным или самым
+быстрым. Сначала подключи выбранный репозиторий и проверь план Portage.
+
+После подключения его метаданные и Noctalia можно обновить отдельно от всей
+системы:
 
 ```bash
-doas emaint sync -r guru
+doas emaint sync -r <имя-репозитория>
 doas emerge --ask --verbose --update --oneshot gui-apps/noctalia
 ```
+
+`<имя-репозитория>` — имя из соответствующего файла в
+`/etc/portage/repos.conf/`. Для эталонной ASUS B5402 подготовлен публичный
+[noctalia-overlay](https://github.com/vovanbl411/noctalia-overlay); его
+подключение и сопровождение описаны в README оверлея, а фактическое состояние
+машины — в [системной записи](../systems/asus-b5402/desktop/noctalia.md).
 
 Если Portage сообщает, что пакет или его зависимость замаскированы по keyword,
 добавь только запрошенные правила в отдельный файл внутри
@@ -53,7 +63,7 @@ cat /var/db/pkg/gui-apps/noctalia-*/repository
 
 ## 3. Ссылки
 
-- [Официальный релиз Noctalia v5.0.1](https://github.com/noctalia-dev/noctalia/releases/tag/v5.0.1)
+- [Официальный релиз Noctalia v5.1.0](https://github.com/noctalia-dev/noctalia/releases/tag/v5.1.0)
 - [Noctalia v5: установка для Gentoo](https://docs.noctalia.dev/noctalia/getting-started/installation/)
 - [Noctalia v5: модель конфигурации и проверка TOML](https://docs.noctalia.dev/noctalia/configuration/)
 - [Noctalia v5: palettes и перенос цветовой схемы v4](https://docs.noctalia.dev/noctalia/theming/palette/)
