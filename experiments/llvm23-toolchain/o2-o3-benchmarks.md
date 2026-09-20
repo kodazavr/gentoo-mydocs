@@ -867,7 +867,8 @@ fixed-work и time-based throughput benchmarks; малые/средние биб
 большой production package. Experiment B не является одним synthetic
 microbenchmark.
 
-Изменений в production-политике не сделано: глобальный `-O3` остаётся,
-`make.conf`/`package.env` не тронуты, selective rules не созданы,
-`env/llvm-23` не существует. Optimization policy decision (2026-09-20)
-задокументировано; его применение — отдельный controlled step, NOT STARTED.
+Изменение в production-политике: optimization policy decision (2026-09-20)
+применено к `/etc/portage` — глобальный baseline теперь `-O2`
+(`make.conf` и env-файлы переведены, resolver рассчитывается); полный
+rebuild `@world` под `-O2` не выполнен. Selective rules не созданы,
+`env/llvm-23` не существует.

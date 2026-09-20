@@ -2,7 +2,7 @@
 kind: guide
 scope: general
 status: current
-last_verified: 2026-09-13
+last_verified: 2026-09-20
 verified_on: [asus-b5402]
 ---
 
@@ -25,12 +25,12 @@ AR="llvm-ar"
 NM="llvm-nm"
 RANLIB="llvm-ranlib"
 
-# CPU и общие флаги (Alder Lake + O3 + ThinLTO)
-COMMON_FLAGS="-march=alderlake -O3 -flto=thin -pipe -mno-kl -mno-pconfig -mno-sgx -mno-widekl -mshstk"
+# CPU и общие флаги (Alder Lake + O2 + ThinLTO)
+COMMON_FLAGS="-march=alderlake -O2 -flto=thin -pipe -mno-kl -mno-pconfig -mno-sgx -mno-widekl -mshstk"
 CFLAGS="${COMMON_FLAGS}"
 CXXFLAGS="${COMMON_FLAGS}"
 # GNU Fortran не понимает `-flto=thin` (расширение Clang) — отдельный набор без LTO
-FORTRAN_FLAGS="-march=alderlake -O3 -pipe -mno-kl -mno-pconfig -mno-sgx -mno-widekl -mshstk"
+FORTRAN_FLAGS="-march=alderlake -O2 -pipe -mno-kl -mno-pconfig -mno-sgx -mno-widekl -mshstk"
 FCFLAGS="${FORTRAN_FLAGS}"
 FFLAGS="${FORTRAN_FLAGS}"
 CPU_FLAGS_X86="aes avx avx2 avx_vnni bmi1 bmi2 f16c fma3 mmx mmxext pclmul popcnt rdrand sha sse sse2 sse3 sse4_1 sse4_2 ssse3 vpclmulqdq"
@@ -80,6 +80,20 @@ GENTOO_MIRRORS="https://mirror.yandex.ru/gentoo-distfiles/ \
 SECUREBOOT_SIGN_KEY="/var/lib/sbctl/keys/db/db.key"
 SECUREBOOT_SIGN_CERT="/var/lib/sbctl/keys/db/db.pem"
 ```
+
+> **Примечание**: optimization baseline — глобальный `-O2`; ThinLTO остаётся
+> там, где package/ebuild policy его допускает. `-O3` допускается только
+> package-specific и только после отдельного benchmark. Решение (2026-09-20)
+> принято по итогам сравнения `-O2`/`-O3` на четырёх классах workload —
+> методика и данные:
+> [experiments/llvm23-toolchain](../experiments/llvm23-toolchain/README.md).
+
+> **Примечание**: для конкретной системы рекомендуется явный
+> `-march=<microarchitecture>`: такая policy воспроизводима и проверяема по
+> конфигу. `-march=native` удобен для локальной одноразовой сборки, но
+> подбирает флаги под конкретный экземпляр CPU, на котором идёт компиляция, и
+> хуже подходит как документированная reproducible policy. Пример ASUS
+> использует `-march=alderlake`.
 
 > **Примечание**: ранее в качестве глобального линкера использовался `mold`. Сейчас системная сборка идёт через `lld`; `mold` остаётся в качестве линкера для Rust-флагов в `env/p-cores`.
 

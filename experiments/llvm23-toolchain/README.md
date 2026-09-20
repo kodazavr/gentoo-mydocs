@@ -40,7 +40,7 @@ optimization policy.
 3. Какой глобальный optimization baseline оправдан: `-O3` глобально или
    `-O2` глобально с package-specific `-O3`. — **Experiment B: COMPLETE**
    (B1–B4; решение: global `-O2` + selective benchmark-proven `-O3`;
-   production rollout — NOT STARTED).
+   применена к `/etc/portage` 2026-09-20, полный rebuild — pending).
 4. Есть ли практический смысл после этого переходить с GNU runtime-компонентов
    на `compiler-rt + libunwind`, не смешивая этот шаг с заменой C++ stdlib. —
    Experiment C: NOT STARTED.
@@ -88,6 +88,12 @@ libgcc_s
 ```
 
 ## Текущие исключения Portage
+
+> Снапшот на момент старта эксперимента. После перепроверки и cleanup
+> 2026-09-20 gcc-fallback остался только на `sys-devel/binutils` и
+> `x11-libs/pango` (оба с `bfd`); source `dev-java/openjdk:17` заменён на
+> `dev-java/openjdk-bin:25`. Действующее состояние —
+> [systems/asus-b5402/system/boot-and-portage.md](../../systems/asus-b5402/system/boot-and-portage.md).
 
 Аудит `package.env` показал 111 записей, связанных с
 `gcc-fallback`, `problem-llvm`, `llvm-22` или `no-lto-llvm`.
@@ -159,7 +165,8 @@ code footprint, а runtime benefit был небольшим, workload-specific,
 **Optimization policy decision (2026-09-20)**: global `-O2` + selective
 benchmark-proven `-O3`; ThinLTO остаётся глобально там, где package/ebuild
 policy допускает. Selective `-O3` rules по итогам B1–B4 не создаются.
-Production rollout — NOT STARTED.
+Политика применена к `/etc/portage` 2026-09-20 (`make.conf`, env); полный
+`@world` rebuild под `-O2` не выполнен.
 
 ## Дорожная карта
 
@@ -174,7 +181,9 @@ Experiment B — -O2 vs -O3 — COMPLETE
   B4 mesa — COMPLETE (2026-09-20)
   optimization policy decision — COMPLETE (2026-09-20)
           ↓
-production rollout: применение -O2, затем limited env/llvm-23 pilot —
+применение -O2 в /etc/portage — COMPLETE (2026-09-20)
+          ↓
+полный O2 rebuild + валидация, затем limited env/llvm-23 pilot —
 NOT STARTED
 ```
 
@@ -184,7 +193,8 @@ NOT STARTED
 
 Дальше, каждое — отдельным решением владельца:
 
-- применение принятой optimization policy в production (global `-O2`);
+- применение принятой optimization policy в production (global `-O2`) —
+  конфигурация применена 2026-09-20; остаётся полный rebuild `@world`;
 - ограниченный `env/llvm-23` pilot; глобальный переход — только после
   resolver-аудита;
 - world rebuild по контролируемой схеме: pretend/resolver-проверка, оценка

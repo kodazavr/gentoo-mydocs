@@ -35,7 +35,7 @@ C — runtimes. План — в [README.md](README.md), ментальная м�
 | A4 mesa | PASS | Финальный review B1–B3 | COMPLETE |
 | — | — | B4 mesa | COMPLETE |
 | — | — | Optimization policy decision | COMPLETE |
-| — | — | Production rollout политики | NOT STARTED |
+| — | — | Применение политики к `/etc/portage` | COMPLETE (2026-09-20) |
 
 B1 — benchmark result, а не validation gate: для O2/O3 статус «PASS» не
 используется.
@@ -753,10 +753,10 @@ code footprint. Формулировки «O3 быстрее на 0.3%», «O2 �
 ### Optimization policy decision — COMPLETE
 
 - **Дата**: 2026-09-20, по итогам B1–B4.
-- **Тип**: документированное policy decision. Production-система и
-  `/etc/portage` прямо сейчас не меняются — применение решения отдельный
-  controlled step после review документации (production rollout — NOT
-  STARTED).
+- **Тип**: документированное policy decision. Применено к `/etc/portage`
+  2026-09-20 (`make.conf`, `env/gcc-fallback`, `env/no-lto-llvm`;
+  `env/kernel-llvm` уже был `-O2`); resolver рассчитывается. Полный
+  `@world` rebuild под `-O2` не выполнен; LLVM 23 rollout — NOT STARTED.
 
 Принято:
 
@@ -804,7 +804,9 @@ Experiment B — -O2 vs -O3 — COMPLETE
   B4 mesa — COMPLETE (2026-09-20)
   optimization policy decision — COMPLETE (2026-09-20)
           ↓
-production rollout: применение -O2, затем limited env/llvm-23 pilot —
+применение -O2 в /etc/portage — COMPLETE (2026-09-20)
+          ↓
+полный O2 rebuild + валидация, затем limited env/llvm-23 pilot —
 NOT STARTED
 ```
 
