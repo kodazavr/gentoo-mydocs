@@ -25,7 +25,7 @@ verified_on: [asus-b5402]
 ### 1.1. Ключевые принципы
 
 - **Второй диск НЕ в initramfs.** Открывается через systemd `/etc/crypttab` уже после загрузки rootfs. Dracut/UKI/`rd.luks.*`/sbctl — **не трогаем**. Критический путь загрузки остаётся таким же надёжным.
-- **Один LUKS2 + TPM2 (PCR 0+7)** — тот же TPM, что у первого диска. Авторасшифровка при загрузке.
+- **Один LUKS2 + TPM2 (PCR 7)** — тот же TPM и тот же набор PCR, что у первого диска (набор проверен на этой машине 2026-09-14). Авторасшифровка при загрузке.
 - **Soft-cold для бэкапов**: `@backup` монтируется `noauto`, systemd-юнит монтирует его только на время бэкапа и отмонтирует после. Защищает от ransomware в userspace (без root путь `/mnt/backup` недоступен).
 - **`@data` горячий** — всегда смонтирован в `/home/<username>/data`, это рабочее хранилище.
 - **btrbk для системы** (атомарные Btrfs-снапшоты `@`), **borg для `/home` и `/etc`** (точечный restore, дедупликация, шифрование, exclude-паттерны).
@@ -34,7 +34,7 @@ verified_on: [asus-b5402]
 
 ```text
 /dev/nvme0n1 (весь диск, новая разметка)
-└─ nvme0n1p1   LUKS2 (TPM2 PCR 0+7)  →  /dev/mapper/cryptdata
+└─ nvme0n1p1   LUKS2 (TPM2 PCR 7)   →  /dev/mapper/cryptdata
    └─ Btrfs, label "backup", compress=zstd:3
       ├─ @backup   → /mnt/backup            (noauto, soft-cold)
       │   ├─ gentoo/      ← btrbk: инкрементальные снапшоты @ (корень Gentoo)
@@ -162,8 +162,8 @@ doas cryptsetup luksFormat --type luks2 --pbkdf argon2id /dev/nvme0n1p1
 # Открыть
 doas cryptsetup open --type luks /dev/nvme0n1p1 cryptdata
 
-# Привязать к TPM2 (те же PCR 0+7, что у первого диска)
-doas systemd-cryptenroll --wipe-slot=tpm2 --tpm2-device=auto --tpm2-pcrs=0+7 /dev/nvme0n1p1
+# Привязать к TPM2 — PCR 7, тот же набор, что у первого диска
+doas systemd-cryptenroll --wipe-slot=tpm2 --tpm2-device=auto --tpm2-pcrs=7 /dev/nvme0n1p1
 
 # Проверить слоты: должны быть парольный (0) и TPM2
 doas cryptsetup luksDump /dev/nvme0n1p1
@@ -173,6 +173,8 @@ doas blkid -s UUID -o value /dev/nvme0n1p1
 ```
 
 > ⚠️ **Важно**: обязательно оставь **парольный слот**. Если TPM умрёт или PCR изменятся (обновление firmware, перемонтаж Secure Boot) — без пароля диск не открыть никогда. Сравни с первым диском: `doas cryptsetup luksDump /dev/nvme1n1p2` — там тоже должен быть парольный слот рядом с TPM.
+
+> ⚠️ **Важный нюанс**: именно PCR 7, а не расширенный набор вроде `0+7` — на прошивке этой машины расширенные наборы не дают выгоды: даже минимальный PCR 7 меняется при пересборке UKI/cmdline. Обоснование и процедура перезачисления — [troubleshooting: TPM2-анлок после пересборки UKI](../../../troubleshooting/luks-tpm2-unlock-after-uki-rebuild.md). Возьмёшь другой набор — синхронизируй `tpm2-pcrs=` в `/etc/crypttab` (§8).
 
 ---
 
@@ -212,10 +214,10 @@ doas chown <username>:<username> /home/<username>/data
 
 ```text
 # <name>      <device>                <password>   <options>
-cryptdata      UUID=<LUKS-UUID>        none         luks,tpm2-device=auto,tpm2-measure-pcr=yes
+cryptdata      UUID=<LUKS-UUID>        none         luks,tpm2-device=auto,tpm2-pcrs=7
 ```
 
-> Где `<LUKS-UUID>` — UUID из `blkid -s UUID -o value /dev/nvme0n1p1` (§6).
+> Где `<LUKS-UUID>` — UUID из `blkid -s UUID -o value /dev/nvme0n1p1` (§6). `tpm2-pcrs=` указан явно и совпадает с набором из `systemd-cryptenroll` в §6 — так разблокировка не зависит от дефолтов crypttab.
 
 Файл: `/etc/fstab` — добавить строки (в стиле существующих Btrfs-записей):
 
