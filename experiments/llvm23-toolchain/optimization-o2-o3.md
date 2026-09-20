@@ -12,9 +12,9 @@ verified_on: [asus-b5402]
 системы оставаться `-O3`, или разумнее глобальный `-O2` с package-specific
 `-O3` только там, где он даёт измеримый выигрыш?
 
-Статус: **IN PROGRESS** — B1, B2 COMPLETE; B3 (planned class — crypto) и B4
-NOT STARTED. Это гипотеза, а не принятое решение; ни один уровень не
-объявляется победителем заранее.
+Статус: **IN PROGRESS** — B1, B2, B3 COMPLETE; следующий шаг — финальный
+review / optional B4, затем решение по optimization policy. Это гипотеза, а
+не принятое решение; ни один уровень не объявляется победителем заранее.
 Результаты измерений — в [o2-o3-benchmarks.md](o2-o3-benchmarks.md), журнал —
 в [results.md](results.md).
 
@@ -88,8 +88,9 @@ runtime libraries, версия пакета и benchmark workload остают�
 |------|----------------|--------|
 | B1 | compute-heavy codec (`media-libs/libde265-1.1.3`) | COMPLETE |
 | B2 | compression/decompression (`app-arch/zstd-1.5.7-r1`) | COMPLETE |
-| B3 | crypto | NOT STARTED (следующий) |
+| B3 | crypto (`dev-libs/openssl-3.5.8`, без LTO по политике ebuild) | COMPLETE |
 | B4 | опционально крупный desktop/graphics workload | NOT STARTED |
+| — | финальный review + optimization policy decision | NOT STARTED |
 
 Точные пакеты B2–B4 ещё не выбраны; выбор делает владелец, а не документация.
 
@@ -104,9 +105,9 @@ runtime libraries, версия пакета и benchmark workload остают�
 - workload достаточно длинный, чтобы benchmark noise был существенно меньше
   измеряемой разницы.
 
-## 6. Результаты B1 и B2 (кратко)
+## 6. Результаты B1–B3 (кратко)
 
-B1 — libde265-1.1.3, single-thread HEVC decode (4 прогона на уровень, P-core):
+B1 — libde265-1.1.3, single-thread HEVC decode (4+4 прогона, P-core):
 
 ```text
 O3 runtime       ≈ 1.2% быстрее (task-clock -1.19%)
@@ -114,30 +115,53 @@ O3 instructions  ≈ 1.8% меньше
 O3 libde265 .text ≈ 12.3% больше
 ```
 
-B1 усиливает гипотезу `global -O2 + selective -O3`, но одного codec workload
-недостаточно, чтобы менять глобальную optimization policy всей системы.
-
 B2 — zstd-1.5.7-r1, compression и decompression по одному corpus (4+4 прогона
 на каждый путь, P-core):
 
 ```text
-O3 libzstd .text      ≈ 9.2% больше
-O3 compression        ≈ 1–2% быстрее
-O3 decompression      ≈ 1–2% медленнее
+O3 libzstd .text ≈ 9.2% больше
+O3 compression   ≈ 1–2% быстрее
+O3 decompression ≈ 1–2% медленнее
 ```
 
-B2 — смешанный результат: `-O3` увеличил code footprint основной библиотеки,
-улучшив один hot path и ухудшив другой. Отсюда важное ограничение: даже
-package-specific `-O3` не выбирается автоматически только потому, что пакет
-«performance-sensitive»; optimization level оценивается по реальному workload
-mix и измеренному trade-off.
+Смешанный результат: `-O3` увеличил code footprint, улучшив один hot path и
+ухудшив другой. Важное ограничение: package-specific `-O3` не выбирается
+автоматически только потому, что пакет «performance-sensitive».
 
-Сводная таблица B1 + B2 и полные данные — в
+B3 — openssl-3.5.8, crypto (без LTO по политике ebuild `filter-lto`;
+`openssl speed`, 4+4 сэмпла на алгоритм, P-core):
+
+```text
+AES-256-CTR:  преимущества O3 нет (≈ -0.17%, фактически ничья)
+SHA-256:      O3 ≈ -0.5%
+ChaCha20:     O3 ≈ -1%
+libcrypto .text ≈ +2.62%, libssl .text ≈ +4.24%
+```
+
+> В протестированных OpenSSL crypto workload'ах `-O3` не дал измеримого
+> преимущества над `-O2`, продолжая увеличивать размер кода.
+
+Тенденция после трёх классов workload (codec, compression/decompression,
+crypto):
+
+> `-O3` последовательно увеличивал code footprint, а runtime-выигрыши были
+> малыми, зависящими от workload, отсутствующими или отрицательными.
+
+Это более сильное evidence, чем после B1 или B2, но всё ещё не финальное
+решение:
+
+> Протестированные workload'ы дают всё больше эмпирической поддержки global
+> O2 + selective O3, однако system-wide решение по политике остаётся
+> открытым.
+
+Сводная таблица B1–B3, методика измерений (канонические правила и
+интерпретационная рамка) и полные данные — в
+[benchmark-methodology.md](benchmark-methodology.md) и
 [o2-o3-benchmarks.md](o2-o3-benchmarks.md).
 
 Изменений в production-конфигурации не сделано: `make.conf` не тронут,
-система не переведена на `-O2`, selective `-O3` rules не созданы, `env/llvm-23`
-не существует.
+система не переведена на `-O2`, selective `-O3` rules не созданы,
+`env/llvm-23` не существует.
 
 ## 7. Критерий решения
 

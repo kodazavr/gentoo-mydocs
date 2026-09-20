@@ -31,8 +31,8 @@ C — runtimes. План — в [README.md](README.md), ментальная м�
 |------|--------|------|--------|
 | A1 libde265 | PASS | B1 libde265 | COMPLETE |
 | A2 libunistring | PASS | B2 zstd | COMPLETE |
-| A3 mesa_clc | PASS | B3 (crypto) | NOT STARTED |
-| A4 mesa | PASS | B4 | NOT STARTED |
+| A3 mesa_clc | PASS | B3 openssl | COMPLETE |
+| A4 mesa | PASS | B4 / финальный review | NOT STARTED |
 
 B1 — benchmark result, а не validation gate: для O2/O3 статус «PASS» не
 используется.
@@ -607,12 +607,49 @@ package-specific `-O3` не выбирается автоматически по
 «performance-sensitive»-пакета; optimization level оценивается по реальному
 workload mix и измеренному trade-off. Production-политика не менялась.
 
-### B3 — NEXT (planned class: crypto)
+### B3 — OpenSSL controlled A/B: COMPLETE
 
-Не начат. Планируемый класс workload — crypto; конкретный пакет не выбран и
-выбирается владельцем. B4 (опционально крупный desktop/graphics workload) —
-NOT STARTED. Критерии выбора и метрики — в
-[optimization-o2-o3.md](optimization-o2-o3.md).
+`dev-libs/openssl-3.5.8`, cryptography, C / assembly-heavy. Особенность:
+Gentoo ebuild сам выполняет `filter-lto` (upstream OpenSSL не считает LTO
+регулярно тестируемой конфигурацией), поэтому обе ветки собраны без ThinLTO —
+B3 проверяет O2/O3 ещё в одной реальной production configuration. Provenance
+подтверждён из binpkg: Clang 23 + LLD 23, `-O2`/`-O3` — единственная разница,
+`-flto=thin` отсутствует в обеих ветках. Изоляция через `LD_LIBRARY_PATH`
+(каждая ветка — свои `libssl.so.3`/`libcrypto.so.3`).
+
+Benchmark: `openssl speed` (AES-256-CTR, SHA-256, ChaCha20; буфер 16 KiB,
+окно 10 c; `taskset -c 2`; 4+4 симметричных сэмпла на алгоритм; warm-up;
+`OPENSSL_CONF=/dev/null`). Time-based semantics: raw perf totals
+нормализованы на байт (методика — в
+[benchmark-methodology.md](benchmark-methodology.md)). Ключевые числа (полные
+данные — в [o2-o3-benchmarks.md](o2-o3-benchmarks.md)):
+
+```text
+AES-256-CTR:  преимущества O3 нет (≈ -0.17%, статистическая ничья)
+SHA-256:      O3 ≈ -0.5%
+ChaCha20:     O3 ≈ -1%
+libcrypto .text ≈ +2.62%, libssl .text ≈ +4.24%, CLI .text ≈ +1.37%
+```
+
+Интерпретация: в протестированных crypto workload'ах `-O3` не дал измеримого
+преимущества над `-O2`, продолжая увеличивать размер кода. Scope ограничен
+(три алгоритма, 16 KiB, один P-core, single-process, OpenSSL 3.5.8) — на RSA,
+ECDSA, TLS handshakes, меньшие буферы и multi-threaded workload'ы результат
+не обобщается.
+
+Сводная картина B1+B2+B3: codec, compression/decompression, crypto; ThinLTO и
+no-LTO; C и C++. Тенденция: `-O3` последовательно увеличивал code footprint
+(libde265 +12.3%, libzstd +9.2%, libcrypto +2.6%), а runtime-выигрыши были
+малыми, зависящими от workload, отсутствующими или отрицательными. Это
+усиливает гипотезу `global -O2 + selective -O3`, но system-wide решение
+остаётся открытым.
+
+### Следующий этап — NOT STARTED
+
+Финальный review накопленных результатов B1–B3 и optional B4 (крупный
+desktop/graphics workload) — по решению владельца. Затем optimization policy
+decision. Каноническая методика для будущих измерений зафиксирована в
+[benchmark-methodology.md](benchmark-methodology.md).
 
 ### Decision gate: env/llvm-23 BLOCKED BY Experiment B
 
@@ -623,8 +660,13 @@ package policy (`env/llvm-23`, назначение через `package.env`) о
 Experiment A — LLVM 23 compatibility — COMPLETE
           ↓
 Experiment B — -O2 vs -O3 — IN PROGRESS
+  B1 libde265 — COMPLETE
+  B2 zstd — COMPLETE
+  B3 openssl — COMPLETE
           ↓
-выбор optimization baseline
+финальный review / optional B4
+          ↓
+optimization policy decision
           ↓
 только после этого — limited env/llvm-23 pilot
 ```

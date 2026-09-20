@@ -8,12 +8,14 @@ verified_on: [asus-b5402]
 
 # Бенчмарки -O2 vs -O3 (Experiment B)
 
-Методология и результаты измерений Experiment B. Гипотеза, дизайн A/B и
-критерий решения — в [optimization-o2-o3.md](optimization-o2-o3.md); журнал —
-в [results.md](results.md). Статусы: B1, B2 COMPLETE; B3 (planned
-class — crypto) и B4 NOT STARTED.
+Методология и результаты измерений Experiment B. Канонические правила
+проведения бенчмарков — в [benchmark-methodology.md](benchmark-methodology.md);
+гипотеза, дизайн A/B и критерий решения — в
+[optimization-o2-o3.md](optimization-o2-o3.md); журнал — в
+[results.md](results.md). Статусы: B1, B2, B3 COMPLETE; финальный review /
+optional B4 — NOT STARTED.
 
-B1 и B2 — это benchmark results, а не validation gates. «PASS» здесь не
+B1–B3 — это benchmark results, а не validation gates. «PASS» здесь не
 используется: ни один optimization level не является «успехом теста».
 
 ## 1. Принцип измерений
@@ -426,20 +428,330 @@ policy только потому, что пакет «performance-sensitive». �
 > instruction cache не изолировал — причинный вывод «O3 медленнее из-за
 > большего i-cache footprint» не доказан.
 
-## 6. Сводный вид B1 + B2
+## 6. B3 — dev-libs/openssl-3.5.8
 
-| Gate | Workload | O3 runtime | Цена по code size у O3 | Итог |
-|------|----------|-----------|------------------------|------|
-| B1 | libde265 HEVC decode | ~1.2% быстрее | ~+12.3% `.text` | небольшой выигрыш / большой рост |
-| B2-C | zstd compression | ~1–2% быстрее | ~+9.2% `.text` lib | небольшой выигрыш / заметный рост |
-| B2-D | zstd decompression | ~1–2% медленнее | те же ~+9.2% `.text` lib | регрессия |
+Класс: cryptography; C / assembly-heavy; production crypto implementation.
+B3 добавляет третий класс workload к исследованию: codec (B1),
+compression/decompression (B2), crypto (B3).
 
-Тенденция после двух workload-классов:
+### 6.1 Особенность Gentoo OpenSSL build policy
 
-> O3 последовательно заметно увеличивает code footprint, а runtime-выигрыш
-> пока мал и не универсален.
+Gentoo ebuild OpenSSL самостоятельно выполняет `filter-lto` и убирает ThinLTO
+из build flags: upstream OpenSSL не рассматривает LTO как нормально
+поддерживаемую и регулярно тестируемую конфигурацию. Поэтому:
 
-Это observational trend, а не финальный system-wide conclusion.
+```text
+B1: ThinLTO
+B2: ThinLTO
+B3: без LTO — по политике ebuild, одинаково для обеих веток
+```
+
+Это не недостаток эксперимента: B3 проверяет O2/O3 ещё в одной реальной
+production configuration (Rule 3 методики — package-native policy
+сохраняется).
+
+### 6.2 Controlled-variable design
+
+Одинаково в обеих ветках: `dev-libs/openssl-3.5.8`; Clang 23; LLD 23;
+`-march=alderlake`; runtime/dependencies; конфигурация пакета; LTO отключён
+ebuild'ом. Единственная намеренная разница — `-O2` ↔ `-O3`.
+
+### 6.3 Provenance
+
+Обе сборки — `--buildpkgonly`:
+
+```text
+O2: /tmp/openssl-o2-pkgs/dev-libs/openssl/openssl-3.5.8-1.gpkg.tar
+O3: /tmp/openssl-o3-pkgs/dev-libs/openssl/openssl-3.5.8-1.gpkg.tar
+```
+
+Environment обеих веток (различие — только уровень оптимизации):
+
+```text
+AR=/usr/lib/llvm/23/bin/llvm-ar
+CC=/usr/lib/llvm/23/bin/clang
+CXX=/usr/lib/llvm/23/bin/clang++
+NM=/usr/lib/llvm/23/bin/llvm-nm
+RANLIB=/usr/lib/llvm/23/bin/llvm-ranlib
+
+CFLAGS = -march=alderlake -O2|-O3 -pipe -mno-kl -mno-pconfig
+         -mno-sgx -mno-widekl -mshstk -Qunused-arguments
+         -fno-strict-aliasing -Wa,--noexecstack
+LDFLAGS = -Wl,-O1 -Wl,--as-needed -fuse-ld=lld
+```
+
+> ⚠️ **Важный нюанс**: `-flto=thin` отсутствует в обеих ветках — такова
+> политика ebuild. B3 — чистое O2/O3-сравнение без LTO.
+
+### 6.4 Build cost (auxiliary observation)
+
+| Метрика | O2 | O3 |
+|---------|----|----|
+| User time | 751.77 s | 751.57 s |
+| System time | 256.78 s | 256.22 s |
+| Wall time | 5:21.60 | 4:23.87 |
+| Max RSS | 153008 KiB | 153228 KiB |
+| CPU usage | 313% | 381% |
+
+```text
+O2: filesystem inputs 5160, outputs 105216
+O3: filesystem inputs 3120, outputs 800
+```
+
+> ⚠️ **Важный нюанс**: меньший wall-clock у O3 НЕ доказывает, что O3
+> компилируется быстрее. User time и system time практически идентичны, CPU
+> utilization и filesystem state/outputs сильно различались, выполнено по
+> одному build-run каждого варианта. Build-time данные остаются
+> вспомогательными.
+
+### 6.5 Code size
+
+`openssl` CLI:
+
+| | text | data | bss | file size |
+|--|------|------|------|-----------|
+| O2 | 998556 | 108000 | 22056 | 1109584 |
+| O3 | 1012212 | 108000 | 20728 | 1123232 |
+| O3 vs O2 | +1.37% | = | — | +1.23% |
+
+`libcrypto.so.3`:
+
+| | text | data | bss | file size |
+|--|------|------|------|-----------|
+| O2 | 5489884 | 496424 | 14904 | 5989928 |
+| O3 | 5633716 | 496296 | 14376 | 6133816 |
+| O3 vs O2 | +2.62% | ≈ | — | +2.40% |
+
+`libssl.so.3`:
+
+| | text | data | bss | file size |
+|--|------|------|------|-----------|
+| O2 | 985286 | 53116 | 3120 | 1041264 |
+| O3 | 1027022 | 53084 | 2368 | 1082976 |
+| O3 vs O2 | +4.24% | ≈ | — | +4.01% |
+
+Сравнение главных библиотек B1–B3:
+
+```text
+B1 libde265:  O3 main-library .text ≈ +12.3%
+B2 libzstd:   O3 main-library .text ≈ +9.2%
+B3 libcrypto: O3 main-library .text ≈ +2.6%
+```
+
+Magnitude code growth зависит от пакета/workload; вывод «O3 всегда
+увеличивает `.text` на одинаковую величину» был бы неверен.
+
+### 6.6 Isolation
+
+Обе версии запускались со своими библиотеками через `LD_LIBRARY_PATH`:
+
+```text
+O2: libssl.so.3, libcrypto.so.3
+    → /tmp/openssl-o2-image/image/usr/lib64/
+O3: libssl.so.3, libcrypto.so.3
+    → /tmp/openssl-o3-image/image/usr/lib64/
+```
+
+Случайное использование установленного системного OpenSSL исключено.
+
+### 6.7 Runtime-методология
+
+Штатный бенчмарк `openssl speed`. Алгоритмы и причины выбора:
+
+```text
+AES-256-CTR — hardware-accelerated / heavily optimized crypto path
+SHA-256     — digest workload
+ChaCha20    — stream cipher, другие характеристики реализации
+```
+
+Параметры: буфер 16384 байт, окно измерения 10 секунд
+(`-elapsed -seconds 10 -bytes 16384 -mr -evp <algorithm>`). Среда запуска:
+`taskset -c 2` (P-core), `LD_LIBRARY_PATH` своей ветки,
+`OPENSSL_CONF=/dev/null` — для снижения влияния системной конфигурации
+OpenSSL.
+
+Warm-up: 2-секундный `openssl speed` на каждый алгоритм для каждой ветки (то
+же CPU, алгоритм, размер буфера); в measured samples не входит.
+
+Порядок measured runs — симметричный, на каждый алгоритм:
+
+```text
+1 O2, 2 O3, 3 O3, 4 O2, 5 O3, 6 O2, 7 O2, 8 O3
+```
+
+4 сэмпла каждого уровня на каждый crypto workload. Порядок уменьшает
+systematic warm/cold bias и влияние gradual thermal drift, не запускает
+сначала все сэмплы одного уровня. Параллельно — `perf stat` со счётчиками
+`cpu_core/*` (процесс закреплён за P-core, гибридные `cpu_atom` счётчики не
+применяются).
+
+> ⚠️ **Ключевой методологический пункт — time-based semantics**: `openssl
+> speed` выполняет работу фиксированное время (10 секунд), а не фиксированный
+> объём данных. Более быстрый вариант за те же 10 секунд обрабатывает больше
+> данных, поэтому raw cycles/instructions/branches между O2 и O3 нельзя
+> напрямую сравнивать как «необходимую работу». Raw perf totals используются
+> только вместе с throughput; счётчики нормализуются на обработанный байт
+> (`cycles/byte`, `instructions/byte`, `branches/byte`), а processed bytes
+> берутся из throughput/operation count.
+
+### 6.8 Raw throughput samples
+
+AES-256-CTR, B/s:
+
+| Ветка | s1 | s2 | s3 | s4 |
+|-------|----|----|----|----|
+| O2 (runs 1,4,6,7) | 4469612544.00 | 4504633344.00 | 4531491635.20 | 4533325004.80 |
+| O3 (runs 2,3,5,8) | 4520530739.20 | 4528771891.20 | 4475356774.40 | 4484456448.00 |
+
+SHA-256, B/s:
+
+| Ветка | s1 | s2 | s3 | s4 |
+|-------|----|----|----|----|
+| O2 (runs 1,4,6,7) | 1039613952.00 | 1043352780.80 | 1037153075.20 | 1046799974.40 |
+| O3 (runs 2,3,5,8) | 1039281356.80 | 1043116851.20 | 1033946726.40 | 1028004249.60 |
+
+ChaCha20, B/s:
+
+| Ветка | s1 | s2 | s3 | s4 |
+|-------|----|----|----|----|
+| O2 (runs 1,4,6,7) | 1806598144.00 | 1788937830.40 | 1810109235.20 | 1819310489.60 |
+| O3 (runs 2,3,5,8) | 1810718720.00 | 1815112908.80 | 1762911846.40 | 1751713382.40 |
+
+### 6.9 Derived throughput
+
+AES-256-CTR:
+
+| Метрика | O2 | O3 |
+|---------|----|----|
+| mean | 4509765632 B/s | 4502278963 B/s |
+| O3 vs O2 (mean) | ≈ -0.17% | |
+| median | ≈ 4.518 GB/s | ≈ 4.502 GB/s |
+| CV | ≈ 0.66% | ≈ 0.58% |
+
+> AES-256-CTR — фактически статистическая ничья на этом размере выборки:
+> доказательств значимого преимущества O3 нет. «O2 быстрее на 0.17%» писать
+> нельзя — разница меньше обычной наблюдаемой вариации сэмплов.
+
+SHA-256:
+
+| Метрика | O2 | O3 |
+|---------|----|----|
+| mean | 1041729945.6 B/s | 1036087296.0 B/s |
+| O3 vs O2 (mean) | ≈ -0.54% | |
+| median difference | ≈ -0.47% | |
+| CV | ≈ 0.41% | ≈ 0.63% |
+
+> Преимущества O3 на SHA-256 нет: измеренный throughput O3 примерно на 0.5%
+> ниже, но величина остаётся малой.
+
+ChaCha20:
+
+| Метрика | O2 | O3 |
+|---------|----|----|
+| mean | 1806238924.8 B/s | 1785114214.4 B/s |
+| O3 vs O2 (mean) | ≈ -1.17% | |
+| median difference | ≈ -1.19% | |
+| CV | ≈ 0.70% | ≈ 1.82% |
+
+> ChaCha20 показал наибольшую регрессию O3 из workload'ов B3 — примерно 1%,
+> но вариативность O3-сэмплов заметно выше O2. Писать «O3 ровно на 1.17%
+> медленнее» нельзя; корректно — «примерно на 1% медленнее в этой
+> benchmark-сессии».
+
+### 6.10 Нормализация perf (на обработанный байт)
+
+Приблизительные нормализованные значения:
+
+| Метрика | AES O2 | AES O3 | SHA O2 | SHA O3 | ChaCha O2 | ChaCha O3 |
+|---------|--------|--------|--------|--------|-----------|-----------|
+| cycles/byte | ≈0.47883 | ≈0.47799 | ≈2.07533 | ≈2.07644 | ≈1.18964 | ≈1.20216 |
+| instructions/byte | ≈1.67512 | ≈1.67512 | ≈2.73894 | ≈2.73815 | ≈3.13522 | ≈3.13523 |
+| IPC | ≈3.498 | ≈3.505 | ≈1.3198 | ≈1.3187 | ≈2.635 | ≈2.608 |
+| effective frequency | ≈2.172 GHz | ≈2.175 GHz | ≈2.173 GHz | ≈2.170 GHz | ≈2.172 GHz | ≈2.172 GHz |
+
+Интерпретация по алгоритмам:
+
+- AES-256-CTR: O2 и O3 выполняют практически одинаковую instruction-работу на
+  байт; compiler optimization level влияет на этот heavily optimized crypto
+  hot path очень слабо.
+- SHA-256: разница instructions/byte ≈ -0.03% — практически отсутствует.
+- ChaCha20: instructions/byte практически идентичны, cycles/byte у O3 ≈ +1.05%
+  — хорошо согласуется с измеренной throughput-регрессией.
+
+> ⚠️ **Важный нюанс**: не утверждать без доказательств, что весь AES-путь
+> выполняется исключительно ассемблером. Корректная формулировка:
+> AES-реализации OpenSSL сильно оптимизированы и часто используют
+> архитектурно-специфичный код, что может сокращать долю hot-path работы,
+> зависящую от generic оптимизаций компилятора. Этот benchmark согласуется с
+> такой возможностью, но не изолирует её напрямую.
+
+### 6.11 Frequency sanity check и cache-счётчики
+
+Средняя effective frequency во всех workload'ах была примерно одинаковой
+(~2.17 GHz), различия O2/O3 очень малы:
+
+> Измеренные различия throughput не объясняются систематическим O2/O3-смещением
+> средней частоты CPU. Thermal effects полностью не исключены.
+
+Branch/cache счётчики также собирались, но: значения generic cache events
+сравнительно шумные; B3 не проектировался под изоляцию конкретных событий
+cache-иерархии; семантика Intel hybrid PMU усложняет глубокую интерпретацию
+generic cache counters. Сильных причинных выводов о cache behaviour из B3 не
+делается; central decision опирается прежде всего на throughput, cycles/byte,
+instructions/byte и code size.
+
+### 6.12 Главный результат B3
+
+```text
+AES-256-CTR: преимущества O3 нет (mean ≈ -0.17%, фактически ничья)
+SHA-256:     O3 ≈ -0.5%
+ChaCha20:    O3 ≈ -1%
+
+libcrypto .text ≈ +2.62%
+libssl    .text ≈ +4.24%
+openssl CLI .text ≈ +1.37%
+```
+
+> В протестированных OpenSSL crypto workload'ах `-O3` не дал измеримого
+> преимущества по производительности над `-O2`, продолжая увеличивать размер
+> кода.
+
+### 6.13 Ограничение scope
+
+B3 проверил только: AES-256-CTR, SHA-256, ChaCha20; буферы 16 KiB; один
+P-core; single-process `openssl speed`; OpenSSL 3.5.8; Intel Core i7-1260P;
+Clang 23. Результаты относятся именно к этому scope и не обобщаются
+автоматически на RSA, ECDSA, TLS handshakes, меньшие буферы, multi-threaded
+workload'ы, ARM, другие версии OpenSSL и другие crypto-библиотеки.
+
+## 7. Сводный вид B1–B3
+
+| Gate | Workload | LTO | O3 runtime | O3 code size |
+|------|----------|-----|------------|--------------|
+| B1 | libde265 HEVC decode | ThinLTO | ~1.2% быстрее | ~+12.3% `.text` |
+| B2-C | zstd compression | ThinLTO | ~1–2% быстрее | ~+9.2% lib `.text` |
+| B2-D | zstd decompression | ThinLTO | ~1–2% медленнее | те же ~+9.2% |
+| B3-AES | AES-256-CTR | no LTO | фактически ничья | libcrypto ~+2.6% |
+| B3-SHA | SHA-256 | no LTO | ~0.5% медленнее | libcrypto ~+2.6% |
+| B3-ChaCha | ChaCha20 | no LTO | ~1% медленнее | libcrypto ~+2.6% |
+
+Тенденция после трёх существенно разных классов workload:
+
+> `-O3` последовательно увеличивал code footprint, а runtime-выигрыши были
+> малыми, зависящими от workload, отсутствующими или отрицательными.
+
+Это более сильное evidence, чем после B1 или B2, но всё ещё не финальное
+global policy decision:
+
+> Протестированные workload'ы дают всё больше эмпирической поддержки global
+> O2 + selective O3, однако system-wide решение по политике остаётся
+> открытым.
+
+Что уже покрыто исследованием: C и C++; workload'ы с ThinLTO и без LTO;
+codec, compression, decompression, crypto; fixed-work и time-based throughput
+benchmarks; малые/средние библиотеки и крупные production-библиотеки.
+Experiment B уже не является одним synthetic microbenchmark.
 
 Изменений в production-политике не сделано: глобальный `-O3` остаётся,
-`make.conf`/`package.env` не тронуты, `env/llvm-23` не создан.
+`make.conf`/`package.env` не тронуты, selective rules не созданы,
+`env/llvm-23` не существует.

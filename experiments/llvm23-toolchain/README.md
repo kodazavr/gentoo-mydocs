@@ -22,8 +22,9 @@ optimization policy.
   конфигурация машины;
 - [Гипотеза: -O2 против -O3](optimization-o2-o3.md) — дизайн Experiment B,
   критерии выбора пакетов, критерий решения;
-- [Бенчмарки -O2/-O3](o2-o3-benchmarks.md) — методология измерений и
-  результаты B1;
+- [Методика бенчмарков](benchmark-methodology.md) — канонические правила
+  измерений и интерпретационная рамка для всех B-гейтов;
+- [Бенчмарки -O2/-O3](o2-o3-benchmarks.md) — данные и результаты B1–B3;
 - [Журнал результатов](results.md) — записи по гейтам, итоги Experiment A.
 
 ## Цели
@@ -137,12 +138,19 @@ A — результат совместимости, а не сравнение 
 доказывает совместимость всего `@world` и не отменяет package-specific
 исключения.
 
-**Experiment B — -O2 vs -O3: IN PROGRESS** (B1, B2 COMPLETE; B3 — planned
-class crypto, NOT STARTED; B4 NOT STARTED). B1 (libde265, single-thread HEVC
-decode): O3 runtime ~1.2% быстрее, instructions ~1.8% меньше, `.text` ~12.3%
-больше. B2 (zstd 1.5.7-r1): `libzstd` `.text` ~9.2% больше; compression
-~1–2% быстрее, decompression ~1–2% медленнее — смешанный результат. Подробности —
-в [o2-o3-benchmarks.md](o2-o3-benchmarks.md).
+**Experiment B — -O2 vs -O3: IN PROGRESS** (B1, B2, B3 COMPLETE; финальный
+review / optional B4 — NOT STARTED). B1 (libde265, single-thread HEVC decode):
+O3 runtime ~1.2% быстрее, instructions ~1.8% меньше, `.text` ~12.3% больше.
+B2 (zstd 1.5.7-r1): `libzstd` `.text` ~9.2% больше; compression ~1–2% быстрее,
+decompression ~1–2% медленнее — смешанный результат. B3 (openssl 3.5.8, без
+LTO по политике ebuild): преимущества O3 нет — AES-256-CTR фактическая ничья
+(~-0.17%), SHA-256 ~-0.5%, ChaCha20 ~-1%, `libcrypto` `.text` ~+2.6%.
+Подробности — в [o2-o3-benchmarks.md](o2-o3-benchmarks.md).
+
+Тенденция по трём классам workload (codec, compression/decompression, crypto):
+`-O3` последовательно увеличивал code footprint, а runtime-выигрыши были
+малыми, зависящими от workload, отсутствующими или отрицательными. Решение по
+глобальной политике остаётся открытым.
 
 ## Дорожная карта
 
@@ -152,9 +160,11 @@ Experiment A — LLVM 23 compatibility — COMPLETE
 Experiment B — -O2 vs -O3 — IN PROGRESS
   B1 libde265 — COMPLETE
   B2 zstd — COMPLETE
-  B3 crypto — NEXT
+  B3 openssl — COMPLETE
           ↓
-выбор optimization baseline
+финальный review / optional B4
+          ↓
+optimization policy decision
           ↓
 только после этого: limited env/llvm-23 pilot
 ```
@@ -166,8 +176,8 @@ controlled LLVM 23 rollout.
 
 Дальше, каждое — отдельным решением владельца:
 
-- выбор пакета B3 (planned class — crypto) и проведение измерений; B4 —
-  опционально крупный desktop/graphics workload;
+- финальный review B1–B3 и optional B4 (крупный desktop/graphics workload) —
+  по решению владельца;
 - решение по optimization baseline;
 - ограниченный `env/llvm-23` pilot; глобальный переход — только после
   resolver-аудита;
