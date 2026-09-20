@@ -12,17 +12,19 @@ verified_on: [asus-b5402]
 проведения бенчмарков — в [benchmark-methodology.md](benchmark-methodology.md);
 гипотеза, дизайн A/B и критерий решения — в
 [optimization-o2-o3.md](optimization-o2-o3.md); журнал — в
-[results.md](results.md). Статусы: B1, B2, B3 и финальный review — COMPLETE;
-optimization policy decision открыто, optional B4 — NOT STARTED.
+[results.md](results.md). Статусы: B1–B4, финальный review и optimization
+policy decision — COMPLETE; production rollout принятой политики — NOT
+STARTED.
 
-B1–B3 — это benchmark results, а не validation gates. «PASS» здесь не
+B1–B4 — это benchmark results, а не validation gates. «PASS» здесь не
 используется: ни один optimization level не является «успехом теста».
 
 ## 1. Принцип измерений
 
 В каждом A/B меняется ровно optimization level. Неизменны: compiler
-(Clang 23), linker (LLD 23), `-march=alderlake`, ThinLTO,
-libstdc++/libgcc/libgcc_s, версия пакета и workload.
+(Clang 23), linker (LLD 23), `-march=alderlake`, LTO mode по package/ebuild
+policy (ThinLTO в B1/B2, без LTO в B3/B4), libstdc++/libgcc/libgcc_s, версия
+пакета и workload.
 
 ## 2. Методология сборки
 
@@ -724,7 +726,122 @@ Clang 23. Результаты относятся именно к этому sco
 автоматически на RSA, ECDSA, TLS handshakes, меньшие буферы, multi-threaded
 workload'ы, ARM, другие версии OpenSSL и другие crypto-библиотеки.
 
-## 7. Сводный вид B1–B3
+## 7. B4 — media-libs/mesa-26.2.2
+
+Класс: крупная desktop/graphics codebase (C/C++), production-пакет. B4 —
+последний benchmark Experiment B: закрывает покрытие большим graphics-стеком
+после codec (B1), compression/decompression (B2) и crypto (B3).
+
+### 7.1 Controlled-variable gate
+
+Обе Mesa собраны через `--buildpkgonly` в отдельные PKGDIR:
+
+```text
+compiler/linker:  Clang 23 + LLD 23 (absolute paths слота 23)
+CPU target:       -march=alderlake
+LTO:              -fno-lto — по package policy (no-lto-llvm), одинаково
+                  в обеих ветках
+LLVM dependency:  slot 22
+runtime:          GNU (libstdc++/libgcc/libgcc_s) сохранён
+```
+
+Normalized metadata diff O2/O3 пустой: единственная намеренная разница —
+`-O2` ↔ `-O3`. Production-система во время benchmark не переводилась ни на
+один из уровней; Mesa из binpkg не устанавливалась.
+
+### 7.2 Build observations (auxiliary)
+
+| Метрика | O2 | O3 |
+|---------|----|----|
+| User time | 2047.09 s | 2029.39 s |
+| System time | 237.17 s | 230.23 s |
+| Wall time | 9:03.04 | 8:46.35 |
+| Max RSS | 2669700 KiB | 2666704 KiB |
+
+> ⚠️ **Важный нюанс**: по одному build-run на вариант. Не утверждать, что O3
+> компилируется быстрее — build timing остаётся auxiliary observation
+> (Rule 14 методики).
+
+### 7.3 Code size
+
+Binpkg:
+
+```text
+O2 = 23132160 байт, O3 = 24360960 байт → +5.31%
+```
+
+ELF `.text`:
+
+| ELF | O2 | O3 | O3 vs O2 |
+|-----|----|----|----------|
+| libgallium-26.2.2.so | 32216535 | 33902507 | +5.23% |
+| iris_dri.so | 68826 | 68858 | ~+0.05% |
+| libvulkan_intel.so | 24704045 | 25886606 | +4.79% |
+| libvulkan_intel_hasvk.so | 18767275 | 19691023 | +4.92% |
+
+На крупной production graphics codebase `-O3` снова заметно увеличивает code
+footprint; `iris_dri.so` — практически без роста.
+
+### 7.4 Runtime-методология
+
+Workload — Mesa shader-db на фиксированном shader corpus:
+
+```text
+GPU:           настоящий Intel Alder Lake-P GT2 / Iris Xe [8086:46a6]
+Driver:        real iris userspace driver
+Mesa-деревья:  собственные O2/O3-сборки через LIBGL_DRIVERS_PATH и
+               LD_LIBRARY_PATH
+CPU:           2 (P-core), -j1
+Shader cache:  disabled
+Warm-up:       перед measured runs, в сэмплы не входит
+Порядок:       O2, O3, O3, O2, O3, O2, O2, O3 — 4 measured samples на вариант
+```
+
+Для анализа использовались только счётчики `cpu_core/*`; `cpu_atom/*` для
+итогового вывода не применяются — workload закреплён за P-core.
+
+### 7.5 Derived runtime
+
+| Метрика | O2 | O3 | O3 vs O2 |
+|---------|----|----|----------|
+| task-clock mean | 108.942 s | 108.617 s | ≈ -0.30% |
+| task-clock median | 106.569 s | 108.964 s | — |
+| task-clock CV | ≈ 4.04% | ≈ 1.20% | — |
+| cycles | ≈ 200.78 B | ≈ 196.58 B | ≈ -2.09% |
+| instructions | ≈ 500.78 B | ≈ 485.53 B | ≈ -3.04% |
+| IPC | ≈ 2.494 | ≈ 2.470 | — |
+| branches | ≈ 92.46 B | ≈ 89.60 B | ≈ -3.09% |
+| branch miss rate | ≈ 1.718% | ≈ 1.764% | — |
+| effective frequency | ≈ 1.845 GHz | ≈ 1.810 GHz | — |
+
+Сырые O2 task-clock samples: 106.453, 116.552, 106.076, 106.685 s — один
+сэмпл (116.552) заметно шумнее остальных. Постфактум он не удаляется;
+высокая вариация O2 (CV ≈ 4%) учтена в интерпретации.
+
+### 7.6 Интерпретация
+
+> B4 не обнаружил измеримого runtime-преимущества `-O3` над `-O2`.
+
+- Mean task-clock отличается на ≈ 0.3% при CV O2 ≈ 4% — разница глубоко
+  внутри обычного шума; mean и median при этом расходятся по знаку.
+- `-O3` выполнял меньше instructions, cycles и branches, но это не
+  трансформировалось в доказанный runtime benefit.
+- Средняя effective frequency различалась (O2 ≈ 1.845 GHz, O3 ≈ 1.810 GHz) —
+  это наблюдаемый факт, а не доказанная причина результата.
+
+Формулировки «O3 быстрее на 0.3%», «O2 быстрее на 2.25%» и причинные
+объяснения результата разницей частоты CPU не используются.
+
+### 7.7 Ограничение scope
+
+B4 проверил только: Mesa shader-db на одном фиксированном shader corpus;
+настоящий iris userspace driver на Intel Alder Lake-P GT2 / Iris Xe
+[8086:46a6]; один P-core (CPU 2), `-j1`; shader cache disabled; Mesa 26.2.2
+без LTO по package policy; Clang 23. Результат не обобщается автоматически на
+другие драйверы (hasvk, zink, swrast), игровые, video- и compute-workload'ы,
+multi-thread, E-core и другие версии Mesa.
+
+## 8. Сводный вид B1–B4
 
 | Gate | Workload | LTO | O3 runtime | O3 code size |
 |------|----------|-----|------------|--------------|
@@ -734,24 +851,23 @@ workload'ы, ARM, другие версии OpenSSL и другие crypto-би�
 | B3-AES | AES-256-CTR | no LTO | фактически ничья | libcrypto ~+2.6% |
 | B3-SHA | SHA-256 | no LTO | ~0.5% медленнее | libcrypto ~+2.6% |
 | B3-ChaCha | ChaCha20 | no LTO | ~1% медленнее | libcrypto ~+2.6% |
+| B4 | Mesa shader-db | no LTO | измеримого преимущества нет | крупные ELF ~+5% `.text`, binpkg +5.31% |
 
-Тенденция после трёх существенно разных классов workload:
+Тенденция после четырёх существенно разных классов workload:
 
-> `-O3` последовательно увеличивал code footprint, а runtime-выигрыши были
-> малыми, зависящими от workload, отсутствующими или отрицательными.
+> `-O3` во всех протестированных классах увеличивал code footprint, а runtime
+> benefit был небольшим, workload-specific, отсутствующим либо отрицательным.
 
-Это более сильное evidence, чем после B1 или B2, но всё ещё не финальное
-global policy decision:
+Это итог Experiment B. Зафиксированное решение — в
+[optimization-o2-o3.md](optimization-o2-o3.md) § 7 и [results.md](results.md).
 
-> Протестированные workload'ы дают всё больше эмпирической поддержки global
-> O2 + selective O3, однако system-wide решение по политике остаётся
-> открытым.
-
-Что уже покрыто исследованием: C и C++; workload'ы с ThinLTO и без LTO;
-codec, compression, decompression, crypto; fixed-work и time-based throughput
-benchmarks; малые/средние библиотеки и крупные production-библиотеки.
-Experiment B уже не является одним synthetic microbenchmark.
+Что покрыто исследованием: C и C++; workload'ы с ThinLTO и без LTO; codec,
+compression, decompression, crypto, крупная desktop/graphics codebase;
+fixed-work и time-based throughput benchmarks; малые/средние библиотеки и
+большой production package. Experiment B не является одним synthetic
+microbenchmark.
 
 Изменений в production-политике не сделано: глобальный `-O3` остаётся,
 `make.conf`/`package.env` не тронуты, selective rules не созданы,
-`env/llvm-23` не существует.
+`env/llvm-23` не существует. Optimization policy decision (2026-09-20)
+задокументировано; его применение — отдельный controlled step, NOT STARTED.

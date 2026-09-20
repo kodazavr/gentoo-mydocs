@@ -24,8 +24,9 @@ optimization policy.
   критерии выбора пакетов, критерий решения;
 - [Методика бенчмарков](benchmark-methodology.md) — канонические правила
   измерений и интерпретационная рамка для всех B-гейтов;
-- [Бенчмарки -O2/-O3](o2-o3-benchmarks.md) — данные и результаты B1–B3;
-- [Журнал результатов](results.md) — записи по гейтам, итоги Experiment A.
+- [Бенчмарки -O2/-O3](o2-o3-benchmarks.md) — данные и результаты B1–B4;
+- [Журнал результатов](results.md) — записи по гейтам, итоги Experiment A и
+  B, optimization policy decision.
 
 ## Цели
 
@@ -37,8 +38,9 @@ optimization policy.
    или производительности на Alder Lake. — открытый вопрос, benchmark'ов
    нет.
 3. Какой глобальный optimization baseline оправдан: `-O3` глобально или
-   `-O2` глобально с package-specific `-O3`. — **Experiment B: IN PROGRESS**
-   (B1–B3 и финальный review COMPLETE; решение по optimization policy открыто).
+   `-O2` глобально с package-specific `-O3`. — **Experiment B: COMPLETE**
+   (B1–B4; решение: global `-O2` + selective benchmark-proven `-O3`;
+   production rollout — NOT STARTED).
 4. Есть ли практический смысл после этого переходить с GNU runtime-компонентов
    на `compiler-rt + libunwind`, не смешивая этот шаг с заменой C++ stdlib. —
    Experiment C: NOT STARTED.
@@ -138,47 +140,51 @@ A — результат совместимости, а не сравнение 
 доказывает совместимость всего `@world` и не отменяет package-specific
 исключения.
 
-**Experiment B — -O2 vs -O3: IN PROGRESS** (B1–B3 COMPLETE; финальный review
-B1–B3 — COMPLETE 2026-09-20; осталось решение по optimization policy,
-optional B4 — NOT STARTED). B1 (libde265, single-thread HEVC decode):
-O3 runtime ~1.2% быстрее, instructions ~1.8% меньше, `.text` ~12.3% больше.
-B2 (zstd 1.5.7-r1): `libzstd` `.text` ~9.2% больше; compression ~1–2% быстрее,
-decompression ~1–2% медленнее — смешанный результат. B3 (openssl 3.5.8, без
-LTO по политике ebuild): преимущества O3 нет — AES-256-CTR фактическая ничья
-(~-0.17%), SHA-256 ~-0.5%, ChaCha20 ~-1%, `libcrypto` `.text` ~+2.6%.
-Подробности — в [o2-o3-benchmarks.md](o2-o3-benchmarks.md).
+**Experiment B — -O2 vs -O3: COMPLETE** (B1–B4, финальный review и
+optimization policy decision — 2026-09-20). B1 (libde265, single-thread HEVC
+decode): O3 runtime ~1.2% быстрее, instructions ~1.8% меньше, `.text` ~12.3%
+больше. B2 (zstd 1.5.7-r1): `libzstd` `.text` ~9.2% больше; compression ~1–2%
+быстрее, decompression ~1–2% медленнее — смешанный результат. B3 (openssl
+3.5.8, без LTO по политике ebuild): преимущества O3 нет — AES-256-CTR
+фактическая ничья (~-0.17%), SHA-256 ~-0.5%, ChaCha20 ~-1%, `libcrypto`
+`.text` ~+2.6%. B4 (mesa 26.2.2, shader-db на Iris Xe, `-fno-lto` по package
+policy): измеримого runtime-преимущества O3 нет; крупные Mesa ELF ~+5% `.text`,
+binpkg +5.31%. Подробности — в [o2-o3-benchmarks.md](o2-o3-benchmarks.md).
 
-Тенденция по трём классам workload (codec, compression/decompression, crypto):
-`-O3` последовательно увеличивал code footprint, а runtime-выигрыши были
-малыми, зависящими от workload, отсутствующими или отрицательными. Решение по
-глобальной политике остаётся открытым.
+Тенденция по четырём классам workload (codec, compression/decompression,
+crypto, desktop/graphics): `-O3` во всех протестированных классах увеличивал
+code footprint, а runtime benefit был небольшим, workload-specific,
+отсутствующим либо отрицательным.
+
+**Optimization policy decision (2026-09-20)**: global `-O2` + selective
+benchmark-proven `-O3`; ThinLTO остаётся глобально там, где package/ebuild
+policy допускает. Selective `-O3` rules по итогам B1–B4 не создаются.
+Production rollout — NOT STARTED.
 
 ## Дорожная карта
 
 ```text
 Experiment A — LLVM 23 compatibility — COMPLETE
           ↓
-Experiment B — -O2 vs -O3 — IN PROGRESS
+Experiment B — -O2 vs -O3 — COMPLETE
   B1 libde265 — COMPLETE
   B2 zstd — COMPLETE
   B3 openssl — COMPLETE
   финальный review B1–B3 — COMPLETE (2026-09-20)
+  B4 mesa — COMPLETE (2026-09-20)
+  optimization policy decision — COMPLETE (2026-09-20)
           ↓
-optimization policy decision (optional B4 — по решению владельца)
-          ↓
-только после этого: limited env/llvm-23 pilot
+production rollout: применение -O2, затем limited env/llvm-23 pilot —
+NOT STARTED
 ```
 
-Постоянный `env/llvm-23` явно блокируется Experiment B: не нужно внедрять
-новый постоянный compiler policy и затем вскоре менять глобальный optimization
-baseline. Сначала определяется optimization policy, потом начинается
-controlled LLVM 23 rollout.
+Блокировка `env/llvm-23` со стороны Experiment B снята: optimization policy
+выбрана. Порядок сохраняется — сначала применяется optimization policy, потом
+начинается controlled LLVM 23 rollout; не одновременно.
 
 Дальше, каждое — отдельным решением владельца:
 
-- финальный review B1–B3 и optional B4 (крупный desktop/graphics workload) —
-  по решению владельца;
-- решение по optimization baseline;
+- применение принятой optimization policy в production (global `-O2`);
 - ограниченный `env/llvm-23` pilot; глобальный переход — только после
   resolver-аудита;
 - world rebuild по контролируемой схеме: pretend/resolver-проверка, оценка

@@ -12,8 +12,10 @@ verified_on: [asus-b5402]
 какие ручки существуют, какие из них крутит эксперимент, а какие остаются
 нетронутыми. Это не справочник по LLVM. Факты о машине — из baseline Gate A0
 ([results.md](results.md)), снятого 2026-09-20. Experiment A (LLVM 23
-compatibility) завершён: A1–A4 PASS. Experiment B (-O2 vs -O3) идёт;
-постоянный `env/llvm-23` отложен до его завершения.
+compatibility) завершён: A1–A4 PASS. Experiment B (-O2 vs -O3) завершён:
+B1–B4, optimization policy decision — global `-O2` + selective
+benchmark-proven `-O3`. Применение политики и постоянный `env/llvm-23` —
+следующие controlled шаги (NOT STARTED).
 
 ## 1. Пять слоёв
 

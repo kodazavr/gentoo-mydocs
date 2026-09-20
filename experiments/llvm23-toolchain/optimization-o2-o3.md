@@ -12,12 +12,11 @@ verified_on: [asus-b5402]
 системы оставаться `-O3`, или разумнее глобальный `-O2` с package-specific
 `-O3` только там, где он даёт измеримый выигрыш?
 
-Статус: **IN PROGRESS** — B1, B2, B3 и финальный review COMPLETE (2026-09-20);
-следующий шаг — optimization policy decision, optional B4 — по решению
-владельца. Это гипотеза, а не принятое решение; ни один уровень не
-объявляется победителем заранее.
-Результаты измерений — в [o2-o3-benchmarks.md](o2-o3-benchmarks.md), журнал —
-в [results.md](results.md).
+Статус: **COMPLETE** — B1–B4, финальный review и optimization policy decision
+зафиксированы (2026-09-20): global `-O2` + selective benchmark-proven `-O3`;
+production rollout — NOT STARTED. Результаты измерений — в
+[o2-o3-benchmarks.md](o2-o3-benchmarks.md), журнал и решение — в
+[results.md](results.md).
 
 ## 1. Что сравнивается
 
@@ -90,11 +89,12 @@ runtime libraries, версия пакета и benchmark workload остают�
 | B1 | compute-heavy codec (`media-libs/libde265-1.1.3`) | COMPLETE |
 | B2 | compression/decompression (`app-arch/zstd-1.5.7-r1`) | COMPLETE |
 | B3 | crypto (`dev-libs/openssl-3.5.8`, без LTO по политике ebuild) | COMPLETE |
-| B4 | опционально крупный desktop/graphics workload | NOT STARTED |
+| B4 | крупный desktop/graphics workload (`media-libs/mesa-26.2.2`) | COMPLETE |
 | — | финальный review B1–B3 | COMPLETE (2026-09-20) |
-| — | optimization policy decision | NOT STARTED |
+| — | optimization policy decision | COMPLETE (2026-09-20) |
+| — | production rollout принятой политики | NOT STARTED |
 
-Пакет для optional B4 ещё не выбран; выбор делает владелец, а не документация.
+B4 — последний гейт Experiment B; новых гейтов (B5) не планируется.
 
 Критерии для будущих пакетов:
 
@@ -107,7 +107,7 @@ runtime libraries, версия пакета и benchmark workload остают�
 - workload достаточно длинный, чтобы benchmark noise был существенно меньше
   измеряемой разницы.
 
-## 6. Результаты B1–B3 (кратко)
+## 6. Результаты B1–B4 (кратко)
 
 B1 — libde265-1.1.3, single-thread HEVC decode (4+4 прогона, P-core):
 
@@ -143,20 +143,25 @@ libcrypto .text ≈ +2.62%, libssl .text ≈ +4.24%
 > В протестированных OpenSSL crypto workload'ах `-O3` не дал измеримого
 > преимущества над `-O2`, продолжая увеличивать размер кода.
 
-Тенденция после трёх классов workload (codec, compression/decompression,
-crypto):
+B4 — mesa-26.2.2, shader-db на настоящей Iris Xe (без LTO по package policy;
+4+4 прогона, P-core):
 
-> `-O3` последовательно увеличивал code footprint, а runtime-выигрыши были
-> малыми, зависящими от workload, отсутствующими или отрицательными.
+```text
+runtime: измеримого преимущества O3 нет (mean ≈ -0.30% при CV O2 ≈ 4%)
+libgallium .text ≈ +5.23%, libvulkan_intel ≈ +4.79%, hasvk ≈ +4.92%
+binpkg ≈ +5.31%
+```
 
-Это более сильное evidence, чем после B1 или B2, но всё ещё не финальное
-решение:
+Тенденция после четырёх классов workload (codec, compression/decompression,
+crypto, desktop/graphics):
 
-> Протестированные workload'ы дают всё больше эмпирической поддержки global
-> O2 + selective O3, однако system-wide решение по политике остаётся
-> открытым.
+> `-O3` во всех протестированных классах увеличивал code footprint, а runtime
+> benefit был небольшим, workload-specific, отсутствующим либо отрицательным.
 
-Сводная таблица B1–B3, методика измерений (канонические правила и
+На этом основании optimization policy decision принято (2026-09-20) — см.
+«Критерий решения» ниже и [results.md](results.md).
+
+Сводная таблица B1–B4, методика измерений (канонические правила и
 интерпретационная рамка) и полные данные — в
 [benchmark-methodology.md](benchmark-methodology.md) и
 [o2-o3-benchmarks.md](o2-o3-benchmarks.md).
@@ -178,3 +183,27 @@ crypto):
 
 Цель эксперимента — не доказать заранее превосходство `-O2` или `-O3`, а
 определить разумную политику для конкретной машины.
+
+### Принятое решение (2026-09-20)
+
+Критерий выполнен по результатам B1–B4: `-O2` заметно не проигрывает в
+рентайме на протестированном наборе (измеренные преимущества O3 были
+небольшими: ≈1.2% в B1 и ≈1–2% на compression path B2; B2 при этом дал
+смешанный результат, а во всех гейтах O3 увеличивал code footprint) и
+однородно выигрывает по размеру кода; кандидатов на точечный `-O3`
+измерения не выявили.
+
+```text
+global baseline:  -O2
+ThinLTO:          остаётся глобально там, где package/ebuild policy допускает
+-O3:             только package-specific после отдельного benchmark со
+                  значимым и воспроизводимым практическим выигрышем
+```
+
+Selective `-O3` rules по итогам B1–B4 не создаются: libde265 —
+weak/questionable (~1.2% за ~12.3% `.text`), zstd — смешанный результат,
+OpenSSL и Mesa — без преимущества.
+
+> Решение задокументировано, но не применено: `/etc/portage` и
+> production-система не менялись. Применение `-O2` — отдельный controlled
+> step; production rollout — NOT STARTED.

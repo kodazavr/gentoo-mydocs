@@ -24,7 +24,7 @@ C — runtimes. План — в [README.md](README.md), ментальная м�
 | Эксперимент | Вопрос | Статус |
 |-------------|--------|--------|
 | A — LLVM 22 → 23 | совместимость Clang/LLD 23 с текущей runtime-архитектурой | **COMPLETE** |
-| B — -O2 vs -O3 | выбор глобального optimization baseline | **IN PROGRESS** |
+| B — -O2 vs -O3 | выбор глобального optimization baseline | **COMPLETE** |
 | C — runtimes | `libgcc → compiler-rt`, `libgcc_s → libunwind` | NOT STARTED |
 
 | Gate | Статус | Gate | Статус |
@@ -33,7 +33,9 @@ C — runtimes. План — в [README.md](README.md), ментальная м�
 | A2 libunistring | PASS | B2 zstd | COMPLETE |
 | A3 mesa_clc | PASS | B3 openssl | COMPLETE |
 | A4 mesa | PASS | Финальный review B1–B3 | COMPLETE |
-| — | — | B4 (optional) | NOT STARTED |
+| — | — | B4 mesa | COMPLETE |
+| — | — | Optimization policy decision | COMPLETE |
+| — | — | Production rollout политики | NOT STARTED |
 
 B1 — benchmark result, а не validation gate: для O2/O3 статус «PASS» не
 используется.
@@ -550,7 +552,7 @@ YES — для протестированных классов пакетов.
 быстрее», «LLVM 23 лучше», «LLVM 23 готов для всего @world» не подтверждены и
 в документации не используются.
 
-## Experiment B — IN PROGRESS
+## Experiment B — COMPLETE
 
 Цель:
 
@@ -659,7 +661,7 @@ B1–B3 согласованы. Исправлены два устаревших
 значилось «пакеты B2–B4 ещё не выбраны» при уже завершённых B2/B3. Обе правки
 статусные — числа не менялись.
 
-Консолидированное evidence (сводная таблица — § 7
+Консолидированное evidence (сводная таблица — § 8
 [o2-o3-benchmarks.md](o2-o3-benchmarks.md)):
 
 - **Code size — самый устойчивый результат**: `-O3` увеличил `.text` во всех
@@ -700,26 +702,112 @@ B1–B3 согласованы. Исправлены два устаревших
 Каноническая методика для будущих измерений (в том числе B4) зафиксирована в
 [benchmark-methodology.md](benchmark-methodology.md).
 
-### Decision gate: env/llvm-23 BLOCKED BY Experiment B
+### B4 — Mesa controlled A/B: COMPLETE
 
-До завершения исследования `-O2` vs `-O3` создание постоянной LLVM 23
-package policy (`env/llvm-23`, назначение через `package.env`) откладывается:
+- **Дата**: 2026-09-20 (после финального review B1–B3).
+- **Изменяемая переменная**: только `-O2` ↔ `-O3`. B4 — последний benchmark
+  Experiment B; B5 и дополнительные проверки не планируются.
+
+`media-libs/mesa-26.2.2` — крупная desktop/graphics codebase, закрывает
+покрытие Experiment B большим production-пакетом. Обе сборки —
+`--buildpkgonly` в отдельные PKGDIR: Clang 23 + LLD 23, `-march=alderlake`,
+`-fno-lto` по package policy (одинаково в обеих ветках), LLVM dependency
+slot 22, GNU runtime сохранён. Normalized metadata diff O2/O3 пустой —
+единственная намеренная разница optimization level. Production-система во
+время benchmark не переводилась на O2/O3; Mesa из binpkg не устанавливалась.
+
+Workload: Mesa shader-db на фиксированном shader corpus; настоящий Intel
+Alder Lake-P GT2 / Iris Xe [8086:46a6], real iris userspace driver; CPU 2
+(P-core), `-j1`; shader cache disabled; собственные O2/O3 Mesa-деревья через
+`LIBGL_DRIVERS_PATH`/`LD_LIBRARY_PATH`; warm-up; порядок `O2, O3, O3, O2,
+O3, O2, O2, O3` — 4 measured samples на вариант; анализ по `cpu_core/*`.
+
+Ключевые числа (методология и полные данные — § 7
+[o2-o3-benchmarks.md](o2-o3-benchmarks.md)):
+
+```text
+runtime:                      измеримого преимущества O3 нет
+                              (task-clock mean ≈ -0.30% при CV O2 ≈ 4%;
+                              mean и median расходятся по знаку)
+instructions/cycles/branches: у O3 меньше на ~2–3%, в доказанный
+                              runtime benefit не трансформировались
+libgallium-26.2.2.so .text:   +5.23%
+libvulkan_intel.so .text:     +4.79%
+libvulkan_intel_hasvk:        +4.92%
+iris_dri.so .text:            ~+0.05%
+binpkg:                       +5.31% (23132160 → 24360960 байт)
+```
+
+Build observations (auxiliary, по одному run на вариант): O2 wall 9:03.04,
+O3 wall 8:46.35; user/system time и Max RSS практически одинаковы. Вывод
+«O3 компилируется быстрее» не делается.
+
+Один O2-сэмпл task-clock (116.552 s при остальных ~106 s) заметно шумнее —
+постфактум не удаляется, высокая вариация O2 учтена в интерпретации.
+
+Интерпретация: B4 не обнаружил измеримого runtime-преимущества `-O3` над
+`-O2`; на крупной production graphics codebase `-O3` снова заметно увеличивает
+code footprint. Формулировки «O3 быстрее на 0.3%», «O2 быстрее на 2.25%» и
+причинные объяснения результата разницей частоты CPU не используются.
+
+### Optimization policy decision — COMPLETE
+
+- **Дата**: 2026-09-20, по итогам B1–B4.
+- **Тип**: документированное policy decision. Production-система и
+  `/etc/portage` прямо сейчас не меняются — применение решения отдельный
+  controlled step после review документации (production rollout — NOT
+  STARTED).
+
+Принято:
+
+```text
+global baseline:  -O2
+ThinLTO:          остаётся глобально там, где package/ebuild policy
+                  его допускает
+-O3:              только package-specific после отдельного benchmark,
+                  показавшего заметный и воспроизводимый практический
+                  выигрыш
+selective rules:  по итогам B1–B4 не создаются ни для одного пакета
+```
+
+Основание — сводный результат B1–B4 (§ 8
+[o2-o3-benchmarks.md](o2-o3-benchmarks.md)): `-O3` во всех протестированных
+классах увеличивал code footprint, а runtime benefit был небольшим,
+workload-specific, отсутствующим либо отрицательным. Причины не создавать
+selective rules:
+
+- libde265: ~1.2% runtime benefit за ~12.3% `.text` — weak/questionable;
+- zstd: смешанный результат внутри одного пакета;
+- OpenSSL: преимущества нет;
+- Mesa: преимущества нет.
+
+Кандидат на точечный `-O3` в будущем должен подтверждаться собственным
+benchmark'ом по канонической методике
+([benchmark-methodology.md](benchmark-methodology.md)) — признак
+«performance-sensitive» сам по себе недостаточен (вывод B2).
+
+### Decision gate: env/llvm-23 — после optimization policy decision
+
+Блокировка Experiment B'ом снята: исследование завершено, optimization policy
+выбрана. Создание постоянной LLVM 23 package policy (`env/llvm-23`,
+назначение через `package.env`) и применение `-O2` — следующие controlled
+шаги, каждый отдельным решением владельца:
 
 ```text
 Experiment A — LLVM 23 compatibility — COMPLETE
           ↓
-Experiment B — -O2 vs -O3 — IN PROGRESS
+Experiment B — -O2 vs -O3 — COMPLETE
   B1 libde265 — COMPLETE
   B2 zstd — COMPLETE
   B3 openssl — COMPLETE
   финальный review B1–B3 — COMPLETE (2026-09-20)
+  B4 mesa — COMPLETE (2026-09-20)
+  optimization policy decision — COMPLETE (2026-09-20)
           ↓
-optimization policy decision (optional B4 — по решению владельца)
-          ↓
-только после этого — limited env/llvm-23 pilot
+production rollout: применение -O2, затем limited env/llvm-23 pilot —
+NOT STARTED
 ```
 
-Причина: владелец не хочет одновременно внедрять новый постоянный compiler
-policy и затем вскоре менять глобальный optimization baseline. Сначала
-определяется optimization policy, затем начинается controlled LLVM 23
-rollout.
+Порядок сохраняется: сначала применяется optimization policy, затем
+начинается controlled LLVM 23 rollout — не одновременно. Experiment C
+(`compiler-rt + libunwind`) — NOT STARTED.

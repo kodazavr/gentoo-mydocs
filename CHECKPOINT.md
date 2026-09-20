@@ -63,9 +63,10 @@
   (`--zero-stats` от 2026-09-12).
 - LLVM 23: перевод пакетов, когда ebuild'ы потребителей объявят
   `llvm_slot_23`.
-- LLVM 23 rollout (`env/llvm-23`): осознанно отложен до завершения
-  Experiment B (-O2 vs -O3) и выбора optimization baseline — сначала
-  оптимизационная политика, потом постоянный compiler policy
+- Optimization policy (решение 2026-09-20, Experiment B COMPLETE):
+  global `-O2` + selective benchmark-proven `-O3`; selective rules не
+  создаются. Применение в production — отдельный controlled step (NOT
+  STARTED); затем LLVM 23 rollout `env/llvm-23`
   (`experiments/llvm23-toolchain/`).
 - Backup-UKI `/boot/EFI/Linux/gentoo-7.2.5-bdsm-backup.efi` — оставить или
   удалить, решает владелец.
@@ -111,6 +112,7 @@
 
 | Дата | Событие |
 |------|---------|
+| 2026-09-20 | Experiment B закрыт: B4 (mesa 26.2.2, shader-db на Iris Xe, `-fno-lto` по package policy, Clang 23 + LLD 23) — измеримого runtime-преимущества O3 нет (mean ≈ -0.3% при CV O2 ≈ 4%), крупные Mesa ELF ~+5% `.text`, binpkg +5.31%. Optimization policy decision: global `-O2` + selective benchmark-proven `-O3`, ThinLTO остаётся; selective rules не создаются (libde265 weak ~1.2%/+12.3% `.text`, zstd mixed, openssl/mesa без преимущества). Production не менялся; применение политики и LLVM 23 rollout — NOT STARTED |
 | 2026-09-20 | Эксперимент LLVM 23 (`experiments/llvm23-toolchain/`): фаза A (совместимость Clang/LLD 23 при сохранении GNU-рантайма) завершена — A1–A4 PASS (libde265, libunistring, mesa_clc, mesa через `--buildpkgonly`). Experiment B (-O2 vs -O3) в работе: B1 (libde265) — O3 ~1.2% быстрее, `.text` ~12.3% больше; B2 (zstd 1.5.7-r1) — смешанный результат: compression ~1–2% быстрее, decompression ~1–2% медленнее, `libzstd` `.text` ~9.2% больше; B3 (openssl 3.5.8, crypto, без LTO по политике ebuild) — преимущества O3 нет (AES ≈ ничья, SHA ~-0.5%, ChaCha20 ~-1%), `libcrypto` `.text` +2.6%. Каноническая методика бенчмарков зафиксирована (`benchmark-methodology.md`). Глобальное решение O2/O3 открыто. Production-политика не менялась: Clang/LLD 22, `-O3` + ThinLTO. Rollout `env/llvm-23` осознанно отложен до завершения Experiment B. Финальный review B1–B3 (2026-09-20): документы синхронизированы (исправлены устаревшие статусы в README «Цели» и optimization-o2-o3.md), evidence консолидировано в `results.md`; решение по optimization policy — за владельцем, optional B4 не запускался |
 | 2026-09-14 | Диагностика журнала живой системы: ядро 7.2.5 пересобрано (`RT_GROUP_SCHED_DEFAULT_DISABLED=y` → rtkit realtime; `BT_HIDP=m` + `uinput` в modules-load), `audit_backlog_limit=8192` в cmdline UKI — шум rtkit/kauditd/bluetoothd закрыт. TPM2-токен LUKS перезачислен (PCR 7): автозаблокировка реально проверена; ломалась эпизодически (март/апрель) и 2026-09-14 после смены cmdline. Мир обновлён: `libpcap-1.10.7`, `wayland-1.25.0` + `wayland-scanner`. Решение: остаёмся на PCR 7, ukify отклонён |
 | 2026-09-14 | `/etc/portage` закрыт аудитами и реорганизован: `package.env`/`env` 221→117 правил, env 11→8 файлов (no-op `lld`, сироты, мёртвые атомы); keywords — 10 доменных файлов, 104 правила (дубли, мёртвые, no-op stable-пины сняты); license и savedconfig почищены; resolver-эталон 0 пакетов. Исправлены две ошибки категории в аудите: xwayland-satellite (gui-apps, установлен), packer (dev-util, установлен — keyword/license/world восстановлены) |
