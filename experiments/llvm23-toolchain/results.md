@@ -32,7 +32,8 @@ C — runtimes. План — в [README.md](README.md), ментальная м�
 | A1 libde265 | PASS | B1 libde265 | COMPLETE |
 | A2 libunistring | PASS | B2 zstd | COMPLETE |
 | A3 mesa_clc | PASS | B3 openssl | COMPLETE |
-| A4 mesa | PASS | B4 / финальный review | NOT STARTED |
+| A4 mesa | PASS | Финальный review B1–B3 | COMPLETE |
+| — | — | B4 (optional) | NOT STARTED |
 
 B1 — benchmark result, а не validation gate: для O2/O3 статус «PASS» не
 используется.
@@ -644,11 +645,59 @@ no-LTO; C и C++. Тенденция: `-O3` последовательно ув�
 усиливает гипотезу `global -O2 + selective -O3`, но system-wide решение
 остаётся открытым.
 
-### Следующий этап — NOT STARTED
+### Финальный review B1–B3 — COMPLETE
 
-Финальный review накопленных результатов B1–B3 и optional B4 (крупный
-desktop/graphics workload) — по решению владельца. Затем optimization policy
-decision. Каноническая методика для будущих измерений зафиксирована в
+- **Дата**: 2026-09-20.
+- **Состав**: сверка статусов и чисел между всеми документами эксперимента и
+  CHECKPOINT; консолидация evidence B1–B3; оценка готовности к optimization
+  policy decision. Новых измерений (B4) не проводилось.
+
+Согласованность. Ключевые числа B1–B3 совпадают во всех документах (README,
+optimization-o2-o3, o2-o3-benchmarks, results, CHECKPOINT); статусы A1–A4 и
+B1–B3 согласованы. Исправлены два устаревших статуса: в README «Цели» п. 3
+оставалось «(B1 COMPLETE)» при завершённых B1–B3; в optimization-o2-o3.md § 5
+значилось «пакеты B2–B4 ещё не выбраны» при уже завершённых B2/B3. Обе правки
+статусные — числа не менялись.
+
+Консолидированное evidence (сводная таблица — § 7
+[o2-o3-benchmarks.md](o2-o3-benchmarks.md)):
+
+- **Code size — самый устойчивый результат**: `-O3` увеличил `.text` во всех
+  измеренных ELF — библиотеки +2.6…+12.3%, CLI +1.4…+11.2%. Прямые измерения
+  готовых бинарников, не зависят от benchmark noise.
+- **Runtime — все O2/O3-эффекты в диапазоне ≈ ±2%**: в 4 из 6 сравнений O2
+  быстрее или наравне (B2-D, AES, SHA, ChaCha20); лучшие результаты O3 —
+  ≈ 1.2% (B1) и ≈ 1–2% (B2 compression, при CV O3 до 4%). Решающего
+  преимущества O3 нет ни в одном workload; величины сопоставимы с вариацией
+  сэмплов (CV 0.4–4%).
+- **Build time** — single-run вспомогательные наблюдения, в решение не идут
+  (Rule 14 методики).
+- **Frequency sanity** — пройден во всех гейтах; эффекты не объясняются
+  разной средней частотой.
+- **Coverage** — C и C++; ThinLTO и no-LTO; fixed-work и fixed-time; codec,
+  compression/decompression, crypto; малые утилиты и крупные
+  production-библиотеки.
+
+Соответствие критерию решения (§ 7
+[optimization-o2-o3.md](optimization-o2-o3.md)): условия кандидата
+`global -O2 + selective -O3` поддержаны — O2 заметно не проигрывает в рантайме
+(дефициты ≈ 1.2% на B1 и ≈ 1–2% на B2 compression, оба в пределах ~2%) и
+однородно выигрывает по code size. Кандидатов на точечный `-O3` пока нет:
+лучший выигрыш O3 ≈ 1.2% на одной ветке workload (B1), B2 смешанный внутри
+одного пакета, B3 без преимуществ — selective rules не создаются.
+
+Не покрыто: крупный desktop/graphics workload (optional B4); build-time cost
+(повторные controlled builds); multi-thread, другие алгоритмы/буферы, E-core —
+вне scope (§ 6.13 o2-o3-benchmarks.md). Выборка 4+4 сэмпла надёжна для
+эффектов ≈ 2% и больше; меньшие остаются на границе шума.
+
+> Evidence B1–B3 внутренне согласовано и достаточно для optimization policy
+> decision без новых измерений. Валидны два пути: (1) принять
+> `global -O2 + selective -O3`, пока без единой selective rule, или (2) сначала
+> провести optional B4 — крупный desktop/graphics workload как последний класс
+> нагрузки. Решение — за владельцем.
+
+Каноническая методика для будущих измерений (в том числе B4) зафиксирована в
 [benchmark-methodology.md](benchmark-methodology.md).
 
 ### Decision gate: env/llvm-23 BLOCKED BY Experiment B
@@ -663,10 +712,9 @@ Experiment B — -O2 vs -O3 — IN PROGRESS
   B1 libde265 — COMPLETE
   B2 zstd — COMPLETE
   B3 openssl — COMPLETE
+  финальный review B1–B3 — COMPLETE (2026-09-20)
           ↓
-финальный review / optional B4
-          ↓
-optimization policy decision
+optimization policy decision (optional B4 — по решению владельца)
           ↓
 только после этого — limited env/llvm-23 pilot
 ```

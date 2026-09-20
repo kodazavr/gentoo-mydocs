@@ -12,9 +12,10 @@ verified_on: [asus-b5402]
 системы оставаться `-O3`, или разумнее глобальный `-O2` с package-specific
 `-O3` только там, где он даёт измеримый выигрыш?
 
-Статус: **IN PROGRESS** — B1, B2, B3 COMPLETE; следующий шаг — финальный
-review / optional B4, затем решение по optimization policy. Это гипотеза, а
-не принятое решение; ни один уровень не объявляется победителем заранее.
+Статус: **IN PROGRESS** — B1, B2, B3 и финальный review COMPLETE (2026-09-20);
+следующий шаг — optimization policy decision, optional B4 — по решению
+владельца. Это гипотеза, а не принятое решение; ни один уровень не
+объявляется победителем заранее.
 Результаты измерений — в [o2-o3-benchmarks.md](o2-o3-benchmarks.md), журнал —
 в [results.md](results.md).
 
@@ -90,9 +91,10 @@ runtime libraries, версия пакета и benchmark workload остают�
 | B2 | compression/decompression (`app-arch/zstd-1.5.7-r1`) | COMPLETE |
 | B3 | crypto (`dev-libs/openssl-3.5.8`, без LTO по политике ebuild) | COMPLETE |
 | B4 | опционально крупный desktop/graphics workload | NOT STARTED |
-| — | финальный review + optimization policy decision | NOT STARTED |
+| — | финальный review B1–B3 | COMPLETE (2026-09-20) |
+| — | optimization policy decision | NOT STARTED |
 
-Точные пакеты B2–B4 ещё не выбраны; выбор делает владелец, а не документация.
+Пакет для optional B4 ещё не выбран; выбор делает владелец, а не документация.
 
 Критерии для будущих пакетов:
 

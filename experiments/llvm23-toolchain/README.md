@@ -38,7 +38,7 @@ optimization policy.
    нет.
 3. Какой глобальный optimization baseline оправдан: `-O3` глобально или
    `-O2` глобально с package-specific `-O3`. — **Experiment B: IN PROGRESS**
-   (B1 COMPLETE).
+   (B1–B3 и финальный review COMPLETE; решение по optimization policy открыто).
 4. Есть ли практический смысл после этого переходить с GNU runtime-компонентов
    на `compiler-rt + libunwind`, не смешивая этот шаг с заменой C++ stdlib. —
    Experiment C: NOT STARTED.
@@ -138,8 +138,9 @@ A — результат совместимости, а не сравнение 
 доказывает совместимость всего `@world` и не отменяет package-specific
 исключения.
 
-**Experiment B — -O2 vs -O3: IN PROGRESS** (B1, B2, B3 COMPLETE; финальный
-review / optional B4 — NOT STARTED). B1 (libde265, single-thread HEVC decode):
+**Experiment B — -O2 vs -O3: IN PROGRESS** (B1–B3 COMPLETE; финальный review
+B1–B3 — COMPLETE 2026-09-20; осталось решение по optimization policy,
+optional B4 — NOT STARTED). B1 (libde265, single-thread HEVC decode):
 O3 runtime ~1.2% быстрее, instructions ~1.8% меньше, `.text` ~12.3% больше.
 B2 (zstd 1.5.7-r1): `libzstd` `.text` ~9.2% больше; compression ~1–2% быстрее,
 decompression ~1–2% медленнее — смешанный результат. B3 (openssl 3.5.8, без
@@ -161,10 +162,9 @@ Experiment B — -O2 vs -O3 — IN PROGRESS
   B1 libde265 — COMPLETE
   B2 zstd — COMPLETE
   B3 openssl — COMPLETE
+  финальный review B1–B3 — COMPLETE (2026-09-20)
           ↓
-финальный review / optional B4
-          ↓
-optimization policy decision
+optimization policy decision (optional B4 — по решению владельца)
           ↓
 только после этого: limited env/llvm-23 pilot
 ```

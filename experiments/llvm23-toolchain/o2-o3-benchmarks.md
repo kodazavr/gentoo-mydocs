@@ -12,8 +12,8 @@ verified_on: [asus-b5402]
 проведения бенчмарков — в [benchmark-methodology.md](benchmark-methodology.md);
 гипотеза, дизайн A/B и критерий решения — в
 [optimization-o2-o3.md](optimization-o2-o3.md); журнал — в
-[results.md](results.md). Статусы: B1, B2, B3 COMPLETE; финальный review /
-optional B4 — NOT STARTED.
+[results.md](results.md). Статусы: B1, B2, B3 и финальный review — COMPLETE;
+optimization policy decision открыто, optional B4 — NOT STARTED.
 
 B1–B3 — это benchmark results, а не validation gates. «PASS» здесь не
 используется: ни один optimization level не является «успехом теста».
