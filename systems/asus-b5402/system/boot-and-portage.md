@@ -30,8 +30,8 @@ policy — 2026-09-20.
 - Fortran — `-O2` без ThinLTO: GNU Fortran не понимает `-flto=thin`
   (расширение Clang).
 - Политика применена к `/etc/portage` 2026-09-20: `-O3` → `-O2` в
-  `make.conf` и env-файлах (`gcc-fallback`, `no-lto-llvm`; `kernel-llvm` уже
-  был `-O2`); `portageq envvar CFLAGS CXXFLAGS` подтверждает
+  `make.conf` и env-файлах (`kernel-llvm` уже был `-O2`);
+  `portageq envvar CFLAGS CXXFLAGS` подтверждает
   `-O2 -flto=thin`, resolver рассчитывается. Полный rebuild `@world` под
   `-O2` ещё не выполнен.
 - LLVM 23: compatibility experiment COMPLETE (A1–A4); controlled production
@@ -54,19 +54,35 @@ policy — 2026-09-20.
 
 ## Package.env и GCC-исключения
 
-`package.env`/`env` реорганизованы аудитом 2026-09-14 (4 файла `package.env`,
-117 правил, 8 файлов `env/`). Перепроверка и чистка gcc-fallback — 2026-09-20.
+No-LTO exception cleanup — COMPLETE (2026-09-21): все 102 локальных
+`no-lto-llvm` overrides перепроверены и сняты контролируемыми batch'ами
+(проверка — `emerge --buildpkgonly -1`); `env/no-lto-llvm`, `env/no-ccache`
+(после исчезновения последнего потребителя) и `package.env/20-compatibility`
+удалены. Все 102 overrides оказались больше не нужны: для части пакетов
+ebuild сам управляет LTO (`filter-lto`), а часть Go/Rust-пакетов не
+использует эти C/C++ flags напрямую. Полный rebuild `@world` после
+изменения policy ещё не выполнялся.
 
-Остались только два GCC-исключения (env `gcc-fallback` + `bfd`):
+Текущая структура — 4 файла `env/`, 3 файла `package.env`:
 
 ```text
-sys-devel/binutils   реальная текущая проблема Clang + PGO
-x11-libs/pango       временное исключение перед LLVM 23 rollout
-                     (известная проблема Clang 23)
+/etc/portage/env:          gcc-fallback  kernel-llvm  p-cores  ssd
+/etc/portage/package.env:  00-toolchain  10-performance  30-gcc-fallback
 ```
 
-`bfd` используется вместе с `gcc-fallback`, потому что GCC LTO
-(`-flto=auto`) несовместим с глобальным `-fuse-ld=lld`.
+Действующая policy:
+
+- C/C++ — глобально `-O2` + ThinLTO, если ebuild сам его не фильтрует;
+  локального `no-lto-llvm` blacklist больше нет.
+- GCC fallback — только `sys-devel/binutils` (реальная текущая проблема
+  Clang + PGO) и `x11-libs/pango` (временное исключение перед LLVM 23
+  rollout из-за известной проблемы Clang 23); назначения — в
+  `30-gcc-fallback`. BFD policy находится внутри `env/gcc-fallback`: GCC
+  LTO (`-flto=auto`) несовместим с глобальным `-fuse-ld=lld`.
+- Performance policy (`p-cores`, `ssd`) — в `00-toolchain` и
+  `10-performance`: clang/lld/llvm (`p-cores ssd`), gentoo-kernel
+  (`kernel-llvm p-cores ssd`), firefox и qtbase (`p-cores ssd`), mesa —
+  только `ssd`.
 
 Перепроверены 2026-09-20 и больше не документируются как GCC-исключения:
 `app-shells/bash` (включая `USE=pgo`), `app-containers/lxc-7.0.0-r1`,
@@ -74,8 +90,6 @@ x11-libs/pango       временное исключение перед LLVM 23 
 `media-libs/libjxl`, modern OpenJDK — все успешно собираются production
 Clang.
 
-- `app-containers/docker-cli` — env `no-ccache` + `no-lto-llvm`; это не GCC
-  fallback.
 - Java: source `dev-java/openjdk:17` больше не нужен; система переведена на
   `dev-java/openjdk-bin:25` — system VM через `eselect java-vm`, проверено
   `java -version` (Temurin 25.0.4 LTS) и `javac -version`.

@@ -36,6 +36,7 @@ C — runtimes. План — в [README.md](README.md), ментальная м�
 | — | — | B4 mesa | COMPLETE |
 | — | — | Optimization policy decision | COMPLETE |
 | — | — | Применение политики к `/etc/portage` | COMPLETE (2026-09-20) |
+| — | — | Portage no-LTO exception cleanup | COMPLETE (2026-09-21) |
 
 B1 — benchmark result, а не validation gate: для O2/O3 статус «PASS» не
 используется.
@@ -785,6 +786,29 @@ selective rules:
 benchmark'ом по канонической методике
 ([benchmark-methodology.md](benchmark-methodology.md)) — признак
 «performance-sensitive» сам по себе недостаточен (вывод B2).
+
+### Portage no-LTO exception cleanup — COMPLETE
+
+- **Дата**: 2026-09-21.
+- **Baseline**: 102 локальных назначения `no-lto-llvm` в `package.env` —
+  остаток исторического compatibility-слоя (снапшот на старте эксперимента —
+  в [README.md](README.md)).
+- **Метод**: правила снимались контролируемыми batch'ами; каждый batch
+  проверялся `emerge --buildpkgonly -1`.
+- **Результат**: все 102 overrides удалены; `env/no-lto-llvm`,
+  `env/no-ccache` (после исчезновения последнего потребителя) и
+  `package.env/20-compatibility` удалены; `media-libs/mesa` — только `ssd`
+  в `10-performance`. Структура теперь: `env/` — `gcc-fallback`,
+  `kernel-llvm`, `p-cores`, `ssd`; `package.env/` — `00-toolchain`,
+  `10-performance`, `30-gcc-fallback`.
+
+Доказано: локальный compatibility blacklist `no-lto-llvm` больше не
+требуется — все 102 overrides оказались не нужны (для части пакетов ebuild
+сам управляет LTO через `filter-lto`, часть Go/Rust-пакетов не использует
+эти C/C++ flags напрямую).
+
+НЕ доказано: runtime-состояние полностью пересобранного `@world` — полный
+rebuild после изменения policy не выполнялся.
 
 ### Decision gate: env/llvm-23 — после optimization policy decision
 

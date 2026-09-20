@@ -87,12 +87,15 @@ libgcc
 libgcc_s
 ```
 
-## Текущие исключения Portage
+## Исключения Portage на старте эксперимента
 
-> Снапшот на момент старта эксперимента. После перепроверки и cleanup
-> 2026-09-20 gcc-fallback остался только на `sys-devel/binutils` и
-> `x11-libs/pango` (оба с `bfd`); source `dev-java/openjdk:17` заменён на
-> `dev-java/openjdk-bin:25`. Действующее состояние —
+> Historical starting snapshot: 111 записей ниже — состояние на момент
+> проверки. Текущее состояние: после cleanup 2026-09-20/21 gcc-fallback
+> остался только на `sys-devel/binutils` и `x11-libs/pango` (BFD policy
+> внутри `env/gcc-fallback`); все 102 локальных `no-lto-llvm` overrides
+> сняты, `env/no-lto-llvm` и `env/no-ccache` удалены; source
+> `dev-java/openjdk:17` заменён на `dev-java/openjdk-bin:25`. Действующее
+> состояние —
 > [systems/asus-b5402/system/boot-and-portage.md](../../systems/asus-b5402/system/boot-and-portage.md).
 
 Аудит `package.env` показал 111 записей, связанных с
