@@ -30,8 +30,8 @@ C — runtimes. План — в [README.md](README.md), ментальная м�
 | Gate | Статус | Gate | Статус |
 |------|--------|------|--------|
 | A1 libde265 | PASS | B1 libde265 | COMPLETE |
-| A2 libunistring | PASS | B2 | NOT STARTED |
-| A3 mesa_clc | PASS | B3 | NOT STARTED |
+| A2 libunistring | PASS | B2 zstd | COMPLETE |
+| A3 mesa_clc | PASS | B3 (crypto) | NOT STARTED |
 | A4 mesa | PASS | B4 | NOT STARTED |
 
 B1 — benchmark result, а не validation gate: для O2/O3 статус «PASS» не
@@ -585,11 +585,33 @@ codec workload недостаточно для смены глобальной o
 Изменений в `make.conf`, `package.env` и production-политике не сделано;
 package-specific `-O3` rule для libde265 не создан.
 
-### B2–B4 — NOT STARTED
+### B2 — zstd controlled A/B: COMPLETE
 
-Следующий этап: ещё 2–3 пакета разных workload-классов (compression/crypto/
-numeric; general-purpose C/C++; опционально крупный desktop/graphics).
-Точные пакеты выбирает владелец. Критерии выбора и метрики — в
+`app-arch/zstd-1.5.7-r1`, compression/decompression, C. Та же схема: меняется
+только `-O2` ↔ `-O3` при Clang 23 + LLD 23 + `-march=alderlake` + ThinLTO +
+GNU-рантайм; сборки через `--buildpkgonly` в отдельные PKGDIR; corpus —
+исходники ядра (include/kernel/mm/fs, ~53 MB tar → ~11 MB `.zst`); изоляция
+библиотек через `LD_LIBRARY_PATH` (O2-версия использует O2-`libzstd`,
+O3 — O3-`libzstd`). Ключевые числа (полные данные — в
+[o2-o3-benchmarks.md](o2-o3-benchmarks.md)):
+
+```text
+O3 libzstd .text ≈ 9.2% больше
+O3 compression   ≈ 1–2% быстрее
+O3 decompression ≈ 1–2% медленнее
+```
+
+Интерпретация: смешанный результат — `-O3` заметно увеличил code footprint
+основной библиотеки, улучшив один hot path и ухудшив другой. Отсюда: даже
+package-specific `-O3` не выбирается автоматически по признаку
+«performance-sensitive»-пакета; optimization level оценивается по реальному
+workload mix и измеренному trade-off. Production-политика не менялась.
+
+### B3 — NEXT (planned class: crypto)
+
+Не начат. Планируемый класс workload — crypto; конкретный пакет не выбран и
+выбирается владельцем. B4 (опционально крупный desktop/graphics workload) —
+NOT STARTED. Критерии выбора и метрики — в
 [optimization-o2-o3.md](optimization-o2-o3.md).
 
 ### Decision gate: env/llvm-23 BLOCKED BY Experiment B

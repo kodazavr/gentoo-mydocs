@@ -137,10 +137,12 @@ A — результат совместимости, а не сравнение 
 доказывает совместимость всего `@world` и не отменяет package-specific
 исключения.
 
-**Experiment B — -O2 vs -O3: IN PROGRESS** (B1 COMPLETE, B2/B3/B4 NOT
-STARTED). Ключевые числа B1 (libde265, single-thread HEVC decode): O3 runtime
-~1.2% быстрее, instructions ~1.8% меньше, `.text` библиотеки ~12.3% больше.
-Подробности — в [o2-o3-benchmarks.md](o2-o3-benchmarks.md).
+**Experiment B — -O2 vs -O3: IN PROGRESS** (B1, B2 COMPLETE; B3 — planned
+class crypto, NOT STARTED; B4 NOT STARTED). B1 (libde265, single-thread HEVC
+decode): O3 runtime ~1.2% быстрее, instructions ~1.8% меньше, `.text` ~12.3%
+больше. B2 (zstd 1.5.7-r1): `libzstd` `.text` ~9.2% больше; compression
+~1–2% быстрее, decompression ~1–2% медленнее — смешанный результат. Подробности —
+в [o2-o3-benchmarks.md](o2-o3-benchmarks.md).
 
 ## Дорожная карта
 
@@ -148,6 +150,9 @@ STARTED). Ключевые числа B1 (libde265, single-thread HEVC decode): 
 Experiment A — LLVM 23 compatibility — COMPLETE
           ↓
 Experiment B — -O2 vs -O3 — IN PROGRESS
+  B1 libde265 — COMPLETE
+  B2 zstd — COMPLETE
+  B3 crypto — NEXT
           ↓
 выбор optimization baseline
           ↓
@@ -161,7 +166,8 @@ controlled LLVM 23 rollout.
 
 Дальше, каждое — отдельным решением владельца:
 
-- выбор пакетов B2–B4 и проведение измерений;
+- выбор пакета B3 (planned class — crypto) и проведение измерений; B4 —
+  опционально крупный desktop/graphics workload;
 - решение по optimization baseline;
 - ограниченный `env/llvm-23` pilot; глобальный переход — только после
   resolver-аудита;

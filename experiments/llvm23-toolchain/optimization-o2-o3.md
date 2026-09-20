@@ -12,8 +12,9 @@ verified_on: [asus-b5402]
 системы оставаться `-O3`, или разумнее глобальный `-O2` с package-specific
 `-O3` только там, где он даёт измеримый выигрыш?
 
-Статус: **IN PROGRESS** — B1 COMPLETE, B2/B3/B4 NOT STARTED. Это гипотеза, а
-не принятое решение; ни один уровень не объявляется победителем заранее.
+Статус: **IN PROGRESS** — B1, B2 COMPLETE; B3 (planned class — crypto) и B4
+NOT STARTED. Это гипотеза, а не принятое решение; ни один уровень не
+объявляется победителем заранее.
 Результаты измерений — в [o2-o3-benchmarks.md](o2-o3-benchmarks.md), журнал —
 в [results.md](results.md).
 
@@ -86,8 +87,8 @@ runtime libraries, версия пакета и benchmark workload остают�
 | Gate | Класс workload | Статус |
 |------|----------------|--------|
 | B1 | compute-heavy codec (`media-libs/libde265-1.1.3`) | COMPLETE |
-| B2 | compression / crypto / numeric | NOT STARTED |
-| B3 | ordinary general-purpose C/C++ library или application | NOT STARTED |
+| B2 | compression/decompression (`app-arch/zstd-1.5.7-r1`) | COMPLETE |
+| B3 | crypto | NOT STARTED (следующий) |
 | B4 | опционально крупный desktop/graphics workload | NOT STARTED |
 
 Точные пакеты B2–B4 ещё не выбраны; выбор делает владелец, а не документация.
@@ -103,9 +104,9 @@ runtime libraries, версия пакета и benchmark workload остают�
 - workload достаточно длинный, чтобы benchmark noise был существенно меньше
   измеряемой разницы.
 
-## 6. Результат B1 (кратко)
+## 6. Результаты B1 и B2 (кратко)
 
-На libde265-1.1.3, single-thread HEVC decode (4 прогона на уровень, P-core):
+B1 — libde265-1.1.3, single-thread HEVC decode (4 прогона на уровень, P-core):
 
 ```text
 O3 runtime       ≈ 1.2% быстрее (task-clock -1.19%)
@@ -115,12 +116,28 @@ O3 libde265 .text ≈ 12.3% больше
 
 B1 усиливает гипотезу `global -O2 + selective -O3`, но одного codec workload
 недостаточно, чтобы менять глобальную optimization policy всей системы.
-Полные данные, методология и raw samples — в
+
+B2 — zstd-1.5.7-r1, compression и decompression по одному corpus (4+4 прогона
+на каждый путь, P-core):
+
+```text
+O3 libzstd .text      ≈ 9.2% больше
+O3 compression        ≈ 1–2% быстрее
+O3 decompression      ≈ 1–2% медленнее
+```
+
+B2 — смешанный результат: `-O3` увеличил code footprint основной библиотеки,
+улучшив один hot path и ухудшив другой. Отсюда важное ограничение: даже
+package-specific `-O3` не выбирается автоматически только потому, что пакет
+«performance-sensitive»; optimization level оценивается по реальному workload
+mix и измеренному trade-off.
+
+Сводная таблица B1 + B2 и полные данные — в
 [o2-o3-benchmarks.md](o2-o3-benchmarks.md).
 
 Изменений в production-конфигурации не сделано: `make.conf` не тронут,
-система не переведена на `-O2`, package-specific `-O3` rule для libde265 не
-создан.
+система не переведена на `-O2`, selective `-O3` rules не созданы, `env/llvm-23`
+не существует.
 
 ## 7. Критерий решения
 
