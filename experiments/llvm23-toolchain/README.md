@@ -9,25 +9,40 @@ verified_on: [asus-b5402]
 # Эксперимент: LLVM 23 toolchain
 
 Этот каталог хранит исследовательский план перехода основной сборочной цепочки
-ASUS ExpertBook B5402 с LLVM 22 на LLVM 23.
+ASUS ExpertBook B5402 с LLVM 22 на LLVM 23 и связанное исследование
+optimization policy.
 
 Материал здесь не является подтверждённым состоянием системы и не заменяет
-`systems/asus-b5402/`. После завершения отдельных гейтов подтверждённые
+`systems/asus-b5402/`. После завершения отдельных этапов подтверждённые
 результаты должны быть перенесены в системную документацию или общие guides.
+
+## Документы
+
+- [Toolchain-праймер](toolchain-primer.md) — пять слоёв цепочки и фактическая
+  конфигурация машины;
+- [Гипотеза: -O2 против -O3](optimization-o2-o3.md) — дизайн Experiment B,
+  критерии выбора пакетов, критерий решения;
+- [Бенчмарки -O2/-O3](o2-o3-benchmarks.md) — методология измерений и
+  результаты B1;
+- [Журнал результатов](results.md) — записи по гейтам, итоги Experiment A.
 
 ## Цели
 
-Эксперимент должен отдельно ответить на три вопроса:
-
-1. Насколько безопасно перевести основной compiler/linker stack с
-   Clang/LLD 22 на Clang/LLD 23.
+1. Совместим ли переход compiler/linker stack с Clang/LLD 22 на Clang/LLD 23
+   без одновременной смены runtime-архитектуры. — **Experiment A: COMPLETE**
+   (совместимость доказана для протестированных классов; производительность
+   LLVM 22 vs 23 не измерялась).
 2. Даёт ли LLVM 23 практический выигрыш по времени сборки, размеру бинарников
-   или производительности на Alder Lake при текущей политике `-O3` +
-   ThinLTO.
-3. Есть ли практический смысл после этого переходить с GNU runtime-компонентов
-   на `compiler-rt + libunwind`, не смешивая этот шаг с заменой C++ stdlib.
+   или производительности на Alder Lake. — открытый вопрос, benchmark'ов
+   нет.
+3. Какой глобальный optimization baseline оправдан: `-O3` глобально или
+   `-O2` глобально с package-specific `-O3`. — **Experiment B: IN PROGRESS**
+   (B1 COMPLETE).
+4. Есть ли практический смысл после этого переходить с GNU runtime-компонентов
+   на `compiler-rt + libunwind`, не смешивая этот шаг с заменой C++ stdlib. —
+   Experiment C: NOT STARTED.
 
-Переход с `libstdc++` на `libc++` не входит в первую фазу эксперимента,
+Переход с `libstdc++` на `libc++` не входит в первые фазы эксперимента,
 поскольку это отдельное ABI-решение с более высоким риском.
 
 ## Подтверждённый baseline перед экспериментом
@@ -58,7 +73,7 @@ Clang 23.1.1 и LLD 23.1.1 уже установлены параллельно.
 
 ```text
 Clang 22 -> Clang 23
-LLD   22 -> LLD 23
+LLD   22 -> LLD   23
 ```
 
 и оставить без изменений:
@@ -101,90 +116,70 @@ VDB показал небольшой набор установленных па
 `LLVM_COMPAT` описывает совместимость с LLVM как библиотекой или tool
 dependency.
 
-Поэтому в эксперименте необходимо различать две независимые оси:
+Поэтому в эксперименте различаются две независимые оси:
 
 - версия Clang/LLD, которой компилируется C/C++ код пакета;
 - слот LLVM, с которым пакет линкуется или от которого зависит как от
   библиотеки/toolchain component.
 
-## Гейты
+## Статус экспериментов
 
-### Gate 0 — baseline
+**Experiment A — LLVM 22 → 23 (compatibility): COMPLETE.**
 
-Перед изменениями зафиксировать:
+| Gate | Пакет | Класс | LTO | LLVM dependency | Результат |
+|------|-------|-------|-----|-----------------|-----------|
+| A1 | libde265-1.1.3 | C++ codec | ThinLTO | n/a | PASS |
+| A2 | libunistring-1.4.2 | C library | disabled | n/a | PASS |
+| A3 | mesa_clc-26.2.2 | C/C++ LLVM-dependent | ThinLTO | LLVM 22 | PASS |
+| A4 | mesa-26.2.2 (`--buildpkgonly`) | large graphics stack | disabled | LLVM 22 | PASS |
 
-```bash
-portageq envvar CC
-portageq envvar CXX
-portageq envvar CFLAGS
-portageq envvar CXXFLAGS
-portageq envvar LDFLAGS
+A — результат совместимости, а не сравнение производительности: он не
+доказывает совместимость всего `@world` и не отменяет package-specific
+исключения.
 
-clang --version
-/usr/lib/llvm/23/bin/clang --version
-/usr/lib/llvm/23/bin/ld.lld --version
-```
+**Experiment B — -O2 vs -O3: IN PROGRESS** (B1 COMPLETE, B2/B3/B4 NOT
+STARTED). Ключевые числа B1 (libde265, single-thread HEVC decode): O3 runtime
+~1.2% быстрее, instructions ~1.8% меньше, `.text` библиотеки ~12.3% больше.
+Подробности — в [o2-o3-benchmarks.md](o2-o3-benchmarks.md).
 
-Не менять глобальную конфигурацию до успешного завершения первого пилота.
-
-### Gate 1 — один небольшой пакет
-
-Первый кандидат: `media-libs/libde265`.
-
-Цель: собрать один пакет Clang 23 + LLD 23, сохранив текущие
-`libstdc++ + libgcc + libgcc_s`.
-
-После сборки проверить VDB и фактический linker/compiler provenance.
-
-### Gate 2 — несколько классов пакетов
-
-После успешного Gate 1 выбрать несколько пакетов разного типа:
-
-- небольшая C library;
-- C++ library;
-- пакет с ThinLTO;
-- пакет без ThinLTO;
-- один более крупный desktop/system package.
-
-Не использовать Firefox как ранний пилот.
-
-### Gate 3 — постоянный env для LLVM 23
-
-Только после успешных пилотов создать отдельный Portage env для Clang/LLD 23.
-
-Сначала применить его к ограниченному набору пакетов. Глобальный переход делать
-только после resolver-аудита.
-
-### Gate 4 — world rebuild
-
-Если предыдущие гейты проходят:
-
-- сделать pretend/resolver-проверку;
-- оценить список исключений;
-- пересобрать `@world` по контролируемой схеме;
-- сохранить существующие GCC fallback, пока каждый из них не проверен отдельно.
-
-### Gate 5 — runtime experiment
-
-Только после стабилизации Clang/LLD 23 отдельно исследовать:
+## Дорожная карта
 
 ```text
-libgcc       -> compiler-rt
-libgcc_s     -> libunwind
+Experiment A — LLVM 23 compatibility — COMPLETE
+          ↓
+Experiment B — -O2 vs -O3 — IN PROGRESS
+          ↓
+выбор optimization baseline
+          ↓
+только после этого: limited env/llvm-23 pilot
 ```
 
-Этот эксперимент должен иметь собственный baseline и rollback.
+Постоянный `env/llvm-23` явно блокируется Experiment B: не нужно внедрять
+новый постоянный compiler policy и затем вскоре менять глобальный optimization
+baseline. Сначала определяется optimization policy, потом начинается
+controlled LLVM 23 rollout.
 
-`libc++` не включать в этот gate.
+Дальше, каждое — отдельным решением владельца:
+
+- выбор пакетов B2–B4 и проведение измерений;
+- решение по optimization baseline;
+- ограниченный `env/llvm-23` pilot; глобальный переход — только после
+  resolver-аудита;
+- world rebuild по контролируемой схеме: pretend/resolver-проверка, оценка
+  исключений, пересборка; существующие GCC fallback сохранять до отдельной
+  проверки каждого;
+- Experiment C (`compiler-rt + libunwind`) после A и B, с собственным
+  baseline и rollback; `libc++` не включать;
+- Firefox не использовать как ранний пилот.
 
 ## Что измерять
 
-Для сравнения LLVM 22 и LLVM 23 желательно фиксировать:
+Для сравнения конфигураций фиксируются:
 
 - wall-clock время сборки;
 - peak memory, если удобно;
-- размер итоговых ELF;
-- время линковки крупных ThinLTO-пакетов;
+- размер итоговых ELF и binpkg;
+- время линковки крупных ThinLTO-пакетов, где отделимо;
 - ошибки/предупреждения сборки;
 - необходимость новых `package.env` исключений;
 - runtime benchmark только там, где есть воспроизводимый workload.
@@ -196,7 +191,7 @@ libgcc_s     -> libunwind
 - Не удалять LLVM 22 до завершения миграции.
 - Не менять одновременно compiler, C++ stdlib и runtime.
 - Не снимать существующие GCC fallback массово.
-- Не включать `default-libcxx` в рамках первой фазы.
+- Не включать `default-libcxx` в рамках первых фаз.
 - Не обходить `LLVM_COMPAT` ebuild без отдельного обоснования.
 - Не считать успешную компиляцию достаточной проверкой: нужен хотя бы запуск
   пакета или его штатных smoke checks, если они доступны и безопасны.

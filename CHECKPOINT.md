@@ -63,6 +63,10 @@
   (`--zero-stats` от 2026-09-12).
 - LLVM 23: перевод пакетов, когда ebuild'ы потребителей объявят
   `llvm_slot_23`.
+- LLVM 23 rollout (`env/llvm-23`): осознанно отложен до завершения
+  Experiment B (-O2 vs -O3) и выбора optimization baseline — сначала
+  оптимизационная политика, потом постоянный compiler policy
+  (`experiments/llvm23-toolchain/`).
 - Backup-UKI `/boot/EFI/Linux/gentoo-7.2.5-bdsm-backup.efi` — оставить или
   удалить, решает владелец.
 - Версионированный savedconfig `gentoo-kernel-7.2.5` удалён; конфиг живёт
@@ -107,6 +111,7 @@
 
 | Дата | Событие |
 |------|---------|
+| 2026-09-20 | Эксперимент LLVM 23 (`experiments/llvm23-toolchain/`): фаза A (совместимость Clang/LLD 23 при сохранении GNU-рантайма) завершена — A1–A4 PASS (libde265, libunistring, mesa_clc, mesa через `--buildpkgonly`). Начат Experiment B (-O2 vs -O3): B1 (libde265, single-thread) — O3 ~1.2% быстрее по runtime, instructions ~1.8% меньше, `.text` ~12.3% больше; итоги для policy пока не принимаются. Production-политика не менялась: Clang/LLD 22, `-O3` + ThinLTO. Rollout `env/llvm-23` осознанно отложен до завершения B |
 | 2026-09-14 | Диагностика журнала живой системы: ядро 7.2.5 пересобрано (`RT_GROUP_SCHED_DEFAULT_DISABLED=y` → rtkit realtime; `BT_HIDP=m` + `uinput` в modules-load), `audit_backlog_limit=8192` в cmdline UKI — шум rtkit/kauditd/bluetoothd закрыт. TPM2-токен LUKS перезачислен (PCR 7): автозаблокировка реально проверена; ломалась эпизодически (март/апрель) и 2026-09-14 после смены cmdline. Мир обновлён: `libpcap-1.10.7`, `wayland-1.25.0` + `wayland-scanner`. Решение: остаёмся на PCR 7, ukify отклонён |
 | 2026-09-14 | `/etc/portage` закрыт аудитами и реорганизован: `package.env`/`env` 221→117 правил, env 11→8 файлов (no-op `lld`, сироты, мёртвые атомы); keywords — 10 доменных файлов, 104 правила (дубли, мёртвые, no-op stable-пины сняты); license и savedconfig почищены; resolver-эталон 0 пакетов. Исправлены две ошибки категории в аудите: xwayland-satellite (gui-apps, установлен), packer (dev-util, установлен — keyword/license/world восстановлены) |
 | 2026-09-13 | USE-серия (батчи 1–9) закрыта: NM `-modemmanager -ppp -bluetooth`, qemu только x86_64, libvirt `virtiofsd`, глобальный USE без мёртвых флагов; руководства синхронизированы (base-system, firefox, networkmanager-iwd, systemd-uki-setup); `dracut-cpio` включён владельцем; рабочие аудиты перенесены в `.history/` |
