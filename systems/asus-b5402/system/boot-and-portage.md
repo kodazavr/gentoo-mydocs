@@ -142,6 +142,70 @@ sys-firmware/intel-microcode  dist-kernel initramfs split-ucode hostonly -vanill
 - `video_cards_i915` у mesa удалён 2026-09-12: легаси-драйвер Gen2–Gen5,
   графику Alder Lake обслуживает iris (значение `intel` в `VIDEO_CARDS`).
 
+### USE policy review — 2026-09-22
+
+Частичный review USE-флагов базовых/system packages; полный аудит
+`/etc/portage` остаётся закрытым 2026-09-14. Зафиксированы только принятые
+решения (применены владельцем):
+
+- `app-alternatives/gzip` — выбран `pigz` (parallel gzip) вместо reference
+  GNU gzip.
+- `dev-libs/libpcre2` — `jit`: PCRE2 JIT capability и JIT в `pcre2grep`;
+  автоматического использования JIT каждым consumer PCRE2 это не даёт.
+- `dev-libs/openssl` — `ktls`: kernel support уже присутствует; USE-флаг
+  только компилирует поддержку kTLS в OpenSSL, фактическое использование
+  требует opt-in со стороны приложения/runtime (`SSL_OP_ENABLE_KTLS` или
+  эквивалент).
+- `sys-process/audit` — `io-uring`: поддержка kernel Audit `io_uring`
+  filter/правил и интерпретации io_uring operations; сам `auditd` при этом
+  на io_uring не переводится.
+- `sys-apps/util-linux` — `caps` (добавляет `setpriv` для диагностики
+  capabilities/hardening), `-cramfs` (legacy filesystem tooling не нужен).
+- `app-misc/pax-utils` — `caps`: `pspax` отображает capability sets
+  процессов.
+- `sys-devel/gettext` — `git`: `autopoint` использует Git backend для
+  internal infrastructure data.
+- `sys-apps/coreutils` — `caps` (capability-aware file utilities) и `gmp`
+  (multiprecision arithmetic в `factor`, `expr`, `basenc`).
+- Глобально в `make.conf` включён `verify-provenance`: применяется
+  поддерживающими его `dev-python/*` ebuild'ами для проверки PyPI
+  provenance/attestations. Дополняет `verify-sig`, не заменяет его, и не
+  распространяется на все Python-пакеты.
+
+Архитектурные решения того же review:
+
+- **TPM policy**: `app-crypt/tpm2-tss -fapi -policy`,
+  `app-crypt/tpm2-tools -fapi`, `app-crypt/gnupg -tpm`. TPM используется
+  для LUKS2/`systemd-cryptenroll`; TSS FAPI не задействован, GnuPG keys
+  на TPM не хранятся.
+- **Контейнеры**: `app-containers/lxc landlock` — в дополнение к
+  сохраняемым `apparmor caps seccomp`; `app-containers/containerd -cri` —
+  Kubernetes/CRI не используется. Runtime storage drivers проверены:
+  Docker — `overlay2`, Podman — `overlay`, поэтому
+  `app-containers/docker -btrfs` и `app-containers/podman -btrfs` —
+  осознанное решение, несмотря на Btrfs host filesystem. Для `containerd`
+  действует та же логика: `-btrfs` после resolver-проверки, что
+  `containerd[btrfs]` больше никому не требуется.
+- **Privilege hardening**: `sys-process/htop caps -filecaps` — обычному
+  htop не выдаётся постоянный `CAP_SYS_PTRACE`, расширенный доступ —
+  `doas htop`; `sys-apps/smartmontools caps` — smartd сбрасывает лишние
+  privileges через libcap-ng.
+- **Chrony**: `net-misc/chrony -phc -refclock -rtc` — проверено по
+  `/etc/chrony/chrony.conf`, соответствующие directives отсутствуют;
+  обычный `rtcsync` от USE=`rtc` не зависит.
+- **Graphics**: `media-libs/mesa -vaapi -lm-sensors` при
+  `VIDEO_CARDS="intel zink"` — Gallium VA-API для этого Intel setup не
+  используется (VA-API обслуживается отдельным Intel/libva stack), а
+  `lm-sensors` нужен Mesa только для Gallium HUD, который не используется.
+- **LLVM runtime policy**: `clang-runtime:22` и `clang-runtime:23` —
+  `compiler-rt openmp sanitize` при `-default-compiler-rt -default-libcxx
+  -default-lld -libcxx -llvm-libunwind`. По умолчанию сохраняется GNU
+  runtime ABI; наличие compiler-rt/sanitizer runtimes не переводит систему
+  на LLVM runtimes — это отдельный [Experiment
+  C](../../../experiments/llvm23-toolchain/README.md) (NOT STARTED).
+- **OpenVPN**: `net-vpn/openvpn -dco` — out-of-tree `ovpn-dco` kernel
+  module не вводится без отдельного обоснования/теста.
+
 ## Общие руководства
 
 - [Базовая система](../../../installation/base-system.md)
