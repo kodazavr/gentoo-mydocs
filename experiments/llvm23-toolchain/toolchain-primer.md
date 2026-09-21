@@ -15,7 +15,7 @@ verified_on: [asus-b5402]
 compatibility) завершён: A1–A4 PASS. Experiment B (-O2 vs -O3) завершён:
 B1–B4, optimization policy decision — global `-O2` + selective
 benchmark-proven `-O3`. Политика применена к `/etc/portage` 2026-09-20
-(полный rebuild — pending); постоянный `env/llvm-23` — следующий
+(полный rebuild завершён 2026-09-21); постоянный `env/llvm-23` — следующий
 controlled шаг (NOT STARTED).
 
 ## 1. Пять слоёв

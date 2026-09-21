@@ -71,6 +71,20 @@ environment {
 }
 ```
 
+### Автозапуск приложений
+
+Niri-сессия (`niri-session`) работает как systemd session и штатно поднимает
+`xdg-desktop-autostart.target`, поэтому приложения с XDG autostart entry
+(`/etc/xdg/autostart/*.desktop`) запускаются сами. Не дублируйте такое
+приложение через `spawn-at-startup`/`spawn-sh-at-startup` в `config.kdl` —
+получатся два экземпляра. Типичный пример — polkit authentication agent,
+которого на пользовательскую сессию допускается ровно один: второй экземпляр
+завершается ошибкой регистрации (`An authentication agent already exists
+for the given subject`).
+
+- [Niri wiki — Integrating niri (Autostart)](https://github.com/YaLTeR/niri/wiki/Integrating-niri)
+- [Niri wiki — Configuration: Miscellaneous (`spawn-at-startup`)](https://github.com/YaLTeR/niri/wiki/Configuration:-Miscellaneous)
+
 ## 3. Основные концепции конфига
 
 Конфигурация Niri использует формат KDL. Основные элементы:

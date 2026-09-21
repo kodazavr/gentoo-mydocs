@@ -14,7 +14,8 @@ verified_on: [asus-b5402]
 
 Статус: **COMPLETE** — B1–B4, финальный review и optimization policy decision
 зафиксированы (2026-09-20): global `-O2` + selective benchmark-proven `-O3`;
-политика применена к `/etc/portage` 2026-09-20, полный rebuild — pending.
+политика применена к `/etc/portage` 2026-09-20, полный rebuild завершён
+2026-09-21.
 Результаты измерений — в
 [o2-o3-benchmarks.md](o2-o3-benchmarks.md), журнал и решение — в
 [results.md](results.md).
@@ -94,7 +95,7 @@ runtime libraries, версия пакета и benchmark workload остают�
 | — | финальный review B1–B3 | COMPLETE (2026-09-20) |
 | — | optimization policy decision | COMPLETE (2026-09-20) |
 | — | применение политики к `/etc/portage` | COMPLETE (2026-09-20) |
-| — | полный rebuild `@world` под `-O2` | PENDING |
+| — | полный rebuild `@world` под `-O2` | COMPLETE (2026-09-21) |
 
 B4 — последний гейт Experiment B; новых гейтов (B5) не планируется.
 
@@ -170,7 +171,8 @@ crypto, desktop/graphics):
 
 Политика применена к `/etc/portage` 2026-09-20: `make.conf` и env-файлы
 переведены на `-O2`, resolver рассчитывается; полный rebuild `@world` под
-`-O2` не выполнен. Selective `-O3` rules не созданы, `env/llvm-23` не
+`-O2` завершён 2026-09-21 (post-rebuild boot/runtime проверены).
+Selective `-O3` rules не созданы, `env/llvm-23` не
 существует.
 
 ## 7. Критерий решения
@@ -208,5 +210,5 @@ weak/questionable (~1.2% за ~12.3% `.text`), zstd — смешанный ре�
 OpenSSL и Mesa — без преимущества.
 
 > Решение применено 2026-09-20: `make.conf` и env-файлы переведены на `-O2`,
-> resolver рассчитывается. Полный `@world` rebuild под `-O2` и LLVM 23
-> rollout — следующие controlled шаги (NOT STARTED).
+> resolver рассчитывается. Полный `@world` rebuild под `-O2` завершён
+> 2026-09-21; LLVM 23 rollout — следующий controlled шаг (NOT STARTED).

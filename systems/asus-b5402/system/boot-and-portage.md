@@ -32,8 +32,12 @@ policy — 2026-09-20.
 - Политика применена к `/etc/portage` 2026-09-20: `-O3` → `-O2` в
   `make.conf` и env-файлах (`kernel-llvm` уже был `-O2`);
   `portageq envvar CFLAGS CXXFLAGS` подтверждает
-  `-O2 -flto=thin`, resolver рассчитывается. Полный rebuild `@world` под
-  `-O2` ещё не выполнен.
+  `-O2 -flto=thin`, resolver рассчитывается. Полный rebuild установленного
+  `@world` после смены optimization/LTO policy успешно завершён 2026-09-21:
+  система загрузилась штатно, основные сервисы работают, post-rebuild анализ
+  журналов регрессий, связанных с `-O2` + ThinLTO, не выявил. Это не значит,
+  что каждый установленный файл собран с ThinLTO: ebuild'ы могут фильтровать
+  LTO (`filter-lto`), а часть пакетов вообще не использует C/C++ toolchain.
 - LLVM 23: compatibility experiment COMPLETE (A1–A4); controlled production
   rollout не начат. Ядро намеренно собирается LLVM 23.1.1 (env
   `kernel-llvm`, пилот).
@@ -61,7 +65,7 @@ No-LTO exception cleanup — COMPLETE (2026-09-21): все 102 локальны�
 удалены. Все 102 overrides оказались больше не нужны: для части пакетов
 ebuild сам управляет LTO (`filter-lto`), а часть Go/Rust-пакетов не
 использует эти C/C++ flags напрямую. Полный rebuild `@world` после
-изменения policy ещё не выполнялся.
+изменения policy завершён 2026-09-21 (см. Toolchain выше).
 
 Текущая структура — 4 файла `env/`, 3 файла `package.env`:
 

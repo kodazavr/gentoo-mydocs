@@ -37,6 +37,7 @@ C — runtimes. План — в [README.md](README.md), ментальная м�
 | — | — | Optimization policy decision | COMPLETE |
 | — | — | Применение политики к `/etc/portage` | COMPLETE (2026-09-20) |
 | — | — | Portage no-LTO exception cleanup | COMPLETE (2026-09-21) |
+| — | — | Полный rebuild `@world` (O2/LTO policy) | COMPLETE (2026-09-21) |
 
 B1 — benchmark result, а не validation gate: для O2/O3 статус «PASS» не
 используется.
@@ -757,7 +758,7 @@ code footprint. Формулировки «O3 быстрее на 0.3%», «O2 �
 - **Тип**: документированное policy decision. Применено к `/etc/portage`
   2026-09-20 (`make.conf`, `env/gcc-fallback`, `env/no-lto-llvm`;
   `env/kernel-llvm` уже был `-O2`); resolver рассчитывается. Полный
-  `@world` rebuild под `-O2` не выполнен; LLVM 23 rollout — NOT STARTED.
+  `@world` rebuild под `-O2` завершён 2026-09-21 (см. ниже); LLVM 23 rollout — NOT STARTED.
 
 Принято:
 
@@ -807,8 +808,30 @@ benchmark'ом по канонической методике
 сам управляет LTO через `filter-lto`, часть Go/Rust-пакетов не использует
 эти C/C++ flags напрямую).
 
-НЕ доказано: runtime-состояние полностью пересобранного `@world` — полный
-rebuild после изменения policy не выполнялся.
+НЕ доказано (на момент cleanup): runtime-состояние полностью пересобранного
+`@world`; закрыто полным rebuild 2026-09-21 — см. ниже.
+
+### Полный rebuild `@world` — COMPLETE
+
+- **Дата**: 2026-09-21.
+- **Состав**: полный rebuild установленного `@world` после применения
+  optimization/LTO policy (`-O2` + ThinLTO; локальные no-LTO overrides
+  сняты предыдущим шагом).
+
+Результат: rebuild завершён успешно; система загрузилась штатно, основные
+сервисы работают, новых функциональных проблем не обнаружено. Post-rebuild
+анализ журналов регрессий, связанных с `-O2` + ThinLTO, не выявил.
+
+> Формулировка намеренно аккуратная: это не значит, что каждый установленный
+> файл собран с ThinLTO — ebuild'ы могут фильтровать LTO (`filter-lto`) или
+> вообще не использовать C/C++ toolchain.
+
+Найденные при post-rebuild диагностике проблемы — локальные
+конфигурационные ошибки, не связанные с optimization policy (iwd
+`ProtectKernelTunables`, дублирующийся polkit agent, transient-гонка
+NM/iwd). Зафиксированы в системной документации:
+[networking](../../systems/asus-b5402/networking/networkmanager-and-libvirt.md),
+[desktop](../../systems/asus-b5402/desktop/environment.md).
 
 ### Decision gate: env/llvm-23 — после optimization policy decision
 
@@ -830,7 +853,9 @@ Experiment B — -O2 vs -O3 — COMPLETE
           ↓
 применение -O2 в /etc/portage — COMPLETE (2026-09-20)
           ↓
-полный O2 rebuild + валидация, затем limited env/llvm-23 pilot —
+полный O2 rebuild + валидация — COMPLETE (2026-09-21)
+          ↓
+limited env/llvm-23 pilot —
 NOT STARTED
 ```
 

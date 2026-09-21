@@ -40,7 +40,7 @@ optimization policy.
 3. Какой глобальный optimization baseline оправдан: `-O3` глобально или
    `-O2` глобально с package-specific `-O3`. — **Experiment B: COMPLETE**
    (B1–B4; решение: global `-O2` + selective benchmark-proven `-O3`;
-   применена к `/etc/portage` 2026-09-20, полный rebuild — pending).
+   применена к `/etc/portage` 2026-09-20, полный rebuild завершён 2026-09-21).
 4. Есть ли практический смысл после этого переходить с GNU runtime-компонентов
    на `compiler-rt + libunwind`, не смешивая этот шаг с заменой C++ stdlib. —
    Experiment C: NOT STARTED.
@@ -169,7 +169,7 @@ code footprint, а runtime benefit был небольшим, workload-specific,
 benchmark-proven `-O3`; ThinLTO остаётся глобально там, где package/ebuild
 policy допускает. Selective `-O3` rules по итогам B1–B4 не создаются.
 Политика применена к `/etc/portage` 2026-09-20 (`make.conf`, env); полный
-`@world` rebuild под `-O2` не выполнен.
+`@world` rebuild под `-O2` завершён 2026-09-21 (post-rebuild boot/runtime проверены).
 
 ## Дорожная карта
 
@@ -186,7 +186,9 @@ Experiment B — -O2 vs -O3 — COMPLETE
           ↓
 применение -O2 в /etc/portage — COMPLETE (2026-09-20)
           ↓
-полный O2 rebuild + валидация, затем limited env/llvm-23 pilot —
+полный O2 rebuild + валидация — COMPLETE (2026-09-21)
+          ↓
+limited env/llvm-23 pilot —
 NOT STARTED
 ```
 
@@ -197,7 +199,8 @@ NOT STARTED
 Дальше, каждое — отдельным решением владельца:
 
 - применение принятой optimization policy в production (global `-O2`) —
-  конфигурация применена 2026-09-20; остаётся полный rebuild `@world`;
+  конфигурация применена 2026-09-20, полный rebuild `@world` завершён
+  2026-09-21;
 - ограниченный `env/llvm-23` pilot; глобальный переход — только после
   resolver-аудита;
 - world rebuild по контролируемой схеме: pretend/resolver-проверка, оценка

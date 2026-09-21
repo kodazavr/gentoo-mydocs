@@ -2,7 +2,7 @@
 kind: guide
 scope: general
 status: current
-last_verified: 2026-09-14
+last_verified: 2026-09-21
 verified_on: [asus-b5402]
 ---
 
@@ -64,6 +64,17 @@ capability, например `CAP_SYS_MODULE`, не является настр�
 выдаёт ему права. Не добавляй в набор `CAP_SYS_MODULE`: iwd не загружает
 модули ядра, а эта capability разрешает их загрузку и выгрузку.
 
+> ⚠️ **Важный нюанс**: не задавай для `iwd.service`
+> `ProtectKernelTunables=yes`. iwd сам управляет network sysctl
+> `arp_evict_nocarrier` (IPv4) и `ndisc_evict_nocarrier` (IPv6) — в том
+> числе для корректного поведения Wi-Fi roaming при потере carrier, — а
+> `ProtectKernelTunables=yes` делает kernel tunables, включая `/proc/sys`,
+> недоступными для записи сервису. В журнале это проявляется строками вида
+> `iwd: Unable to write arp_evict_nocarrier to
+> /proc/sys/net/ipv4/conf/wlan0/arp_evict_nocarrier`. Hardening должен
+> учитывать реальные runtime requirements сервиса: `CapabilityBoundingSet`
+> и другие совместимые ограничения при этом можно сохранять.
+
 Файл: `/etc/systemd/system/iwd.service.d/override.conf`
 
 ```ini
@@ -95,5 +106,8 @@ drop-in или верни его прежнее содержимое, затем
 ## Ссылки
 
 - [iwd — systemd unit-файл upstream](https://git.kernel.org/pub/scm/network/wireless/iwd.git/tree/src/iwd.service.in)
+- [iwd — src/station.c (управление sysctl nocarrier)](https://git.kernel.org/pub/scm/network/wireless/iwd.git/tree/src/station.c)
 - [systemd.exec(5) — CapabilityBoundingSet=](https://www.freedesktop.org/software/systemd/man/latest/systemd.exec.html#CapabilityBoundingSet=)
+- [systemd.exec(5) — ProtectKernelTunables=](https://www.freedesktop.org/software/systemd/man/latest/systemd.exec.html#ProtectKernelTunables=)
+- [Документация ядра — ip-sysctl (`arp_evict_nocarrier`, `ndisc_evict_nocarrier`)](https://docs.kernel.org/networking/ip-sysctl.html)
 - [capabilities(7) — CAP_SYS_MODULE](https://man7.org/linux/man-pages/man7/capabilities.7.html)

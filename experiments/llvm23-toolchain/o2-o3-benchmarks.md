@@ -870,5 +870,6 @@ microbenchmark.
 Изменение в production-политике: optimization policy decision (2026-09-20)
 применено к `/etc/portage` — глобальный baseline теперь `-O2`
 (`make.conf` и env-файлы переведены, resolver рассчитывается); полный
-rebuild `@world` под `-O2` не выполнен. Selective rules не созданы,
+rebuild `@world` под `-O2` завершён 2026-09-21 (post-rebuild boot/runtime
+проверены). Selective rules не созданы,
 `env/llvm-23` не существует.

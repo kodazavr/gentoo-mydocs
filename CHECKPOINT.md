@@ -11,7 +11,7 @@
 |----------|----------|
 | Дата последнего аудита | 2026-09-14 — `/etc/portage` целиком (USE, `package.use`, `package.env`/`env`, keywords, license, savedconfig); baseline системы — 2026-09-10 |
 | Ветка | `main` |
-| Рабочее дерево | синхронизация документации 2026-09-21 — одним логическим коммитом |
+| Рабочее дерево | закрытие world-rebuild gate и post-rebuild фиксы 2026-09-21 — одним логическим коммитом |
 | Система | Gentoo, ядро `7.2.5-bdsm`, BIOS `B5402CBA.314`, systemd-boot + UKI, Secure Boot + TPM2 (авторазблокировка LUKS реально проверена 2026-09-14) |
 | Аппаратура | ASUS ExpertBook B5402, i7-1260P (Alder Lake) |
 
@@ -28,7 +28,9 @@
   Замена `-O3` → `-O2` применена 2026-09-20 в `make.conf` и env-файлах
   (`kernel-llvm` уже был `-O2`);
   `portageq envvar CFLAGS CXXFLAGS` подтверждает `-O2 -flto=thin`, resolver
-  рассчитывается. Полный rebuild `@world` под `-O2` не выполнен.
+  рассчитывается. Полный rebuild установленного `@world` после смены
+  optimization/LTO policy завершён 2026-09-21: post-rebuild boot/runtime
+  проверены, связанных с policy регрессий не обнаружено.
 - **CPU target review (2026-09-20)**: `-march=alderlake` сохранён;
   `-march=native` отклонён как production policy — явный таргет
   воспроизводим и проверяем, `native` зависит от CPU сборочной машины.
@@ -45,7 +47,7 @@
   удалены. Вывод: все 102 overrides оказались больше не нужны — для части
   пакетов ebuild сам управляет LTO (`filter-lto`), а часть Go/Rust-пакетов
   не использует эти C/C++ flags напрямую. Полный rebuild `@world` после
-  изменения policy не выполнялся.
+  изменения policy завершён 2026-09-21.
 - **Java**: source `dev-java/openjdk:17` снят; system VM —
   `dev-java/openjdk-bin:25` (Temurin 25.0.4 LTS, проверено
   `java`/`javac -version`).
@@ -72,6 +74,14 @@
   на PCR 7, переход на ukify/PCR-подпись отклонён.
 - **Рабочий стол**: Pure Wayland — Niri + Noctalia 5.0.1 (`::guru`),
   PipeWire, `xwayland-satellite-0.8.2`.
+- **iwd sandbox (2026-09-21)**: в локальном drop-in `iwd.service`
+  `ProtectKernelTunables` переведён в `no` — `yes` блокировал запись
+  `arp_evict_nocarrier`/`ndisc_evict_nocarrier` (iwd управляет ими для
+  Wi-Fi roaming); остальной hardening сохранён.
+- **Polkit agent (2026-09-21)**: дублирующий ручной запуск
+  `polkit-gnome-authentication-agent-1` убран из Niri autostart; остаётся
+  один agent на сессию через XDG autostart; runtime-проверка после нового
+  перелогина — pending.
 - Firewall и AppArmor отложены отдельными решениями; живая система не
   изменяется без согласования.
 
@@ -93,8 +103,8 @@
 - Optimization policy (решение 2026-09-20, Experiment B COMPLETE):
   global `-O2` + selective benchmark-proven `-O3`; selective rules не
   создаются. Политика применена к `/etc/portage` 2026-09-20; полный rebuild
-  под `-O2` ещё не выполнен. Порядок далее: обычный world update → полный
-  O2 rebuild + валидация → controlled LLVM 23 rollout `env/llvm-23`
+  `@world` завершён 2026-09-21 (boot/runtime без связанных с policy
+  проблем). Порядок далее: controlled LLVM 23 rollout `env/llvm-23`
   (`experiments/llvm23-toolchain/`).
 - Backup-UKI `/boot/EFI/Linux/gentoo-7.2.5-bdsm-backup.efi` — оставить или
   удалить, решает владелец.
@@ -140,8 +150,9 @@
 
 | Дата | Событие |
 |------|---------|
-| 2026-09-21 | no-LTO exception cleanup `/etc/portage` COMPLETE: 102 локальных `no-lto-llvm` overrides сняты контролируемыми batch'ами с проверкой `emerge --buildpkgonly -1`; `env/no-lto-llvm`, `env/no-ccache`, `package.env/20-compatibility` удалены; docker-cli exception исчез вместе с этими env-файлами; mesa — только `ssd` в `10-performance`; структура: `env/` — `gcc-fallback`, `kernel-llvm`, `p-cores`, `ssd`; `package.env/` — `00-toolchain`, `10-performance`, `30-gcc-fallback`; BFD policy внутри `env/gcc-fallback`. Корректный вывод: overrides больше не нужны (ebuild `filter-lto` / Go-Rust не используют C/C++ flags напрямую), а не «102 пакета доказанно собираются с ThinLTO». Полный rebuild `@world` — pending |
-| 2026-09-20 | O2 policy применена к Portage-конфигурации (`make.conf`, `env/gcc-fallback`, `env/no-lto-llvm`; `portageq` подтверждает `-O2 -flto=thin`; resolver рассчитывается; полный rebuild не выполнен). gcc-fallback cleanup: остались `binutils` и `pango` (оба `bfd`). CPU target review: `-march=alderlake` сохранён, `native` отклонён (explicit target воспроизводим и auditable). Java → `openjdk-bin:25` (system VM). Осознанные USE-добавления: charset-normalizer `native-extensions`, libass `libunibreak`, libheif `x265 dav1d gdk-pixbuf`. Выводы Experiment A/B перенесены из `experiments/llvm23-toolchain/` в системную документацию и общий guide |
+| 2026-09-21 | Полный rebuild установленного `@world` после применения `-O2` + ThinLTO policy завершён успешно; система загрузилась штатно, основные сервисы работают, post-rebuild анализ журналов регрессий, связанных с policy, не выявил (не каждый файл обязан содержать ThinLTO: ebuild'ы могут фильтровать LTO или не использовать C/C++ toolchain). Post-rebuild фиксы владельца: (1) iwd — `ProtectKernelTunables=yes` в drop-in заменён на `no`: блокировал запись `arp_evict_nocarrier`/`ndisc_evict_nocarrier` sysctl, которыми iwd управляет для Wi-Fi roaming, остальной hardening сохранён; (2) polkit — дублирующий ручной запуск `polkit-gnome-authentication-agent-1` убран из Niri autostart, остаётся XDG autostart (один agent на сессию; runtime-проверка после нового перелогина — не выполнена). Наблюдения без исправлений: transient startup-гонка NetworkManager/iwd вокруг P2P-инициализации (`/net/connman/iwd/0`) без подтверждённого runtime-воздействия; polkit-126-r3 логирует отсутствие `/run/polkit-1/rules.d` и `/usr/local/share/polkit-1/rules.d` — benign, workaround не требуется |
+| 2026-09-21 | no-LTO exception cleanup `/etc/portage` COMPLETE: 102 локальных `no-lto-llvm` overrides сняты контролируемыми batch'ами с проверкой `emerge --buildpkgonly -1`; `env/no-lto-llvm`, `env/no-ccache`, `package.env/20-compatibility` удалены; docker-cli exception исчез вместе с этими env-файлами; mesa — только `ssd` в `10-performance`; структура: `env/` — `gcc-fallback`, `kernel-llvm`, `p-cores`, `ssd`; `package.env/` — `00-toolchain`, `10-performance`, `30-gcc-fallback`; BFD policy внутри `env/gcc-fallback`. Корректный вывод: overrides больше не нужны (ebuild `filter-lto` / Go-Rust не используют C/C++ flags напрямую), а не «102 пакета доказанно собираются с ThinLTO» |
+| 2026-09-20 | O2 policy применена к Portage-конфигурации (`make.conf`, `env/gcc-fallback`, `env/no-lto-llvm`; `portageq` подтверждает `-O2 -flto=thin`; resolver рассчитывается; полный rebuild завершён 2026-09-21). gcc-fallback cleanup: остались `binutils` и `pango` (оба `bfd`). CPU target review: `-march=alderlake` сохранён, `native` отклонён (explicit target воспроизводим и auditable). Java → `openjdk-bin:25` (system VM). Осознанные USE-добавления: charset-normalizer `native-extensions`, libass `libunibreak`, libheif `x265 dav1d gdk-pixbuf`. Выводы Experiment A/B перенесены из `experiments/llvm23-toolchain/` в системную документацию и общий guide |
 | 2026-09-20 | Experiment B закрыт: B4 (mesa 26.2.2, shader-db на Iris Xe, `-fno-lto` по package policy, Clang 23 + LLD 23) — измеримого runtime-преимущества O3 нет (mean ≈ -0.3% при CV O2 ≈ 4%), крупные Mesa ELF ~+5% `.text`, binpkg +5.31%. Optimization policy decision: global `-O2` + selective benchmark-proven `-O3`, ThinLTO остаётся; selective rules не создаются (libde265 weak ~1.2%/+12.3% `.text`, zstd mixed, openssl/mesa без преимущества). Production не менялся; применение политики и LLVM 23 rollout — NOT STARTED |
 | 2026-09-20 | Эксперимент LLVM 23 (`experiments/llvm23-toolchain/`): фаза A (совместимость Clang/LLD 23 при сохранении GNU-рантайма) завершена — A1–A4 PASS (libde265, libunistring, mesa_clc, mesa через `--buildpkgonly`). Experiment B (-O2 vs -O3) в работе: B1 (libde265) — O3 ~1.2% быстрее, `.text` ~12.3% больше; B2 (zstd 1.5.7-r1) — смешанный результат: compression ~1–2% быстрее, decompression ~1–2% медленнее, `libzstd` `.text` ~9.2% больше; B3 (openssl 3.5.8, crypto, без LTO по политике ebuild) — преимущества O3 нет (AES ≈ ничья, SHA ~-0.5%, ChaCha20 ~-1%), `libcrypto` `.text` +2.6%. Каноническая методика бенчмарков зафиксирована (`benchmark-methodology.md`). Глобальное решение O2/O3 открыто. Production-политика не менялась: Clang/LLD 22, `-O3` + ThinLTO. Rollout `env/llvm-23` осознанно отложен до завершения Experiment B. Финальный review B1–B3 (2026-09-20): документы синхронизированы (исправлены устаревшие статусы в README «Цели» и optimization-o2-o3.md), evidence консолидировано в `results.md`; решение по optimization policy — за владельцем, optional B4 не запускался |
 | 2026-09-14 | Диагностика журнала живой системы: ядро 7.2.5 пересобрано (`RT_GROUP_SCHED_DEFAULT_DISABLED=y` → rtkit realtime; `BT_HIDP=m` + `uinput` в modules-load), `audit_backlog_limit=8192` в cmdline UKI — шум rtkit/kauditd/bluetoothd закрыт. TPM2-токен LUKS перезачислен (PCR 7): автозаблокировка реально проверена; ломалась эпизодически (март/апрель) и 2026-09-14 после смены cmdline. Мир обновлён: `libpcap-1.10.7`, `wayland-1.25.0` + `wayland-scanner`. Решение: остаёмся на PCR 7, ukify отклонён |
