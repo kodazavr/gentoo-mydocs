@@ -8,15 +8,31 @@ verified_on: [asus-b5402]
 
 # Настройка сети: NetworkManager + iwd
 
-NetworkManager может использовать iwd как беспроводной backend. Записанное
-состояние ASUS B5402 находится в
-[системном разделе](../systems/asus-b5402/networking/networkmanager-and-libvirt.md),
-а отдельная диагностика MAC-рандомизации — в
-[troubleshooting](../troubleshooting/networkmanager-iwd-mac-randomization.md).
+В этой конфигурации NetworkManager использует `iwd` как Wi-Fi backend.
+NetworkManager остаётся верхним уровнем управления подключениями, а `iwd`
+обслуживает беспроводную часть. В результате Wi-Fi-подключения по-прежнему
+настраиваются и контролируются через NetworkManager.
 
-## 1. Подготовка
+Фактическое состояние ASUS B5402 записано в
+[системном разделе](../systems/asus-b5402/networking/networkmanager-and-libvirt.md).
+Оно не является обязательной конфигурацией для других систем. Отдельная
+диагностика MAC randomization находится в
+[troubleshooting-документе](../troubleshooting/networkmanager-iwd-mac-randomization.md).
 
-Убедитесь, что networkmanager собран с поддержкой iwd.
+## 1. Когда применять и что проверить заранее
+
+Перед настройкой проверь:
+
+- NetworkManager собран с поддержкой `iwd`;
+- в системе нет другого Wi-Fi backend или сетевого сервиса, который будет
+  конфликтовать с выбранным стеком;
+- временный разрыв Wi-Fi при изменении или перезапуске сетевого сервиса
+  допустим.
+
+## 2. Пример настройки Portage
+
+Следующий `package.use` — пример конфигурации, а не универсально необходимый
+набор USE-флагов.
 
 Файл: `/etc/portage/package.use/networkmanager`
 
@@ -25,9 +41,15 @@ net-misc/networkmanager -iptables -dhcpcd -wext -modemmanager -ppp -bluetooth co
 net-vpn/networkmanager-openvpn -gtk
 ```
 
-## 2. Конфигурация NetworkManager
+## 3. Конфигурация NetworkManager
 
-Необходимо явно указать NetworkManager использовать iwd в качестве бэкенда для Wi-Fi.
+Файл задаёт три отдельные части конфигурации:
+
+- `wifi.backend=iwd` выбирает `iwd` как Wi-Fi backend;
+- `wifi.scan-rand-mac-address=yes` включает MAC randomization при сканировании;
+- `wifi.cloned-mac-address=stable` и
+  `ethernet.cloned-mac-address=stable` задают стабильный cloned MAC для
+  подключений.
 
 Файл: `/etc/NetworkManager/conf.d/99-wifi-backend.conf`
 
@@ -44,7 +66,7 @@ wifi.cloned-mac-address=stable
 ethernet.cloned-mac-address=stable
 ```
 
-## 3. Управление сервисами
+## 4. Сервисы
 
 После проверки конфликтующих сетевых служб включи выбранный стек:
 
@@ -53,7 +75,10 @@ doas systemctl enable --now iwd
 doas systemctl enable --now NetworkManager
 ```
 
-## 4. Локальный drop-in для iwd
+Запуск или перезапуск этих сервисов может временно разорвать текущее
+Wi-Fi-соединение.
+
+## 5. Локальный hardening для iwd
 
 Если для `iwd.service` создан локальный drop-in, каждая строка в секции
 `[Service]` должна иметь вид `Директива=значение`. Отдельная строка с именем
@@ -82,13 +107,16 @@ capability, например `CAP_SYS_MODULE`, не является настр�
 CapabilityBoundingSet=CAP_NET_ADMIN CAP_NET_RAW CAP_NET_BIND_SERVICE
 ```
 
-Перед заменой существующей строки посмотри итоговую конфигурацию unit-файла:
+## 6. Применение и проверка
+
+Перед заменой существующей строки и после изменения посмотри итоговую
+конфигурацию unit-файла:
 
 ```bash
 doas systemctl cat iwd.service
 ```
 
-После изменения перечитай unit-файлы и проверь синтаксис:
+Перечитай unit-файлы и проверь синтаксис:
 
 ```bash
 doas systemctl daemon-reload
@@ -99,11 +127,26 @@ doas systemd-analyze verify iwd.service
 обрывать текущее Wi-Fi-соединение, отложи применение до следующей
 перезагрузки; `doas systemctl restart iwd` временно разорвёт его.
 
-Если после перезапуска iwd перестал подключаться к сети, удали локальный
-drop-in или верни его прежнее содержимое, затем снова выполни
-`doas systemctl daemon-reload` и перезапусти iwd.
+После применения проверь, что Wi-Fi работает под управлением NetworkManager,
+а в журнале iwd нет ошибок, связанных с drop-in или записью
+`arp_evict_nocarrier` и `ndisc_evict_nocarrier`. Эти проверки не считаются
+выполненными только потому, что синтаксис unit-файла корректен.
 
-## Ссылки
+## 7. Rollback
+
+Если после перезапуска iwd перестал подключаться к сети, верни прежнее
+содержимое локального drop-in или удали override, затем снова выполни
+`doas systemctl daemon-reload`. Перезапусти iwd либо оставь применение до
+следующей загрузки, если текущее соединение нельзя прерывать.
+
+## Related docs
+
+- [Сеть ASUS B5402](../systems/asus-b5402/networking/networkmanager-and-libvirt.md)
+  — фактическое состояние эталонной системы.
+- [Диагностика MAC randomization](../troubleshooting/networkmanager-iwd-mac-randomization.md)
+  — отдельный troubleshooting-документ.
+
+## References
 
 - [iwd — systemd unit-файл upstream](https://git.kernel.org/pub/scm/network/wireless/iwd.git/tree/src/iwd.service.in)
 - [iwd — src/station.c (управление sysctl nocarrier)](https://git.kernel.org/pub/scm/network/wireless/iwd.git/tree/src/station.c)

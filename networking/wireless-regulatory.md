@@ -1,49 +1,98 @@
+---
+kind: guide
+scope: general
+status: draft
+last_verified: null
+verified_on: []
+---
+
 # Беспроводные домены (Regulatory Domain)
 
-Чтобы Wi-Fi адаптер работал на правильных частотах и с разрешенной мощностью, необходимо установить код страны (ISO 3166-1 alpha-2).
+Regulatory domain задаёт допустимые частоты и мощность Wi-Fi в соответствии с
+регионом. Для него используется двухбуквенный код страны ISO 3166-1 alpha-2.
+Значение должно соответствовать реальному regulatory domain пользователя.
 
-В современных ядрах эту роль выполняет [wireless-regdb](https://wireless.wiki.kernel.org/en/developers/regulatory), а `crda` устарел. Для Gentoo достаточно установить пакет `net-wireless/wireless-regdb` — ядро автоматически подтянет `regulatory.db`.
+Пакет `net-wireless/wireless-regdb` предоставляет ядру regulatory database;
+`crda` устарел. Ядро автоматически загружает `regulatory.db` из
+`wireless-regdb`.
 
-## Проверка текущего региона
+## 1. Перед изменением
+
+Не копируй чужой country code без проверки: вместо него подставь свой `<CC>`,
+где `<CC>` — код ISO 3166-1 alpha-2 для фактического региона.
+
+До изменения проверь текущий regulatory domain:
 
 ```bash
 iw reg get
 ```
 
-## Разовая установка домена
+Эта же команда используется для проверки результата. Например, для Belarus
+код — `BY`; это только пример синтаксиса, а не универсально рекомендуемое
+значение. Текущий регион ASUS B5402 здесь не определяется.
+
+## 2. Временная настройка
+
+Задай regulatory domain до следующей перезагрузки или повторной настройки:
 
 ```bash
-doas iw reg set BY
-iw reg get   # проверка
+doas iw reg set <CC>
+iw reg get
 ```
 
-Синтаксис: `iw reg set <ISO 3166-1 alpha-2>`. Команда `iwdctl` не существует — управление iwd идёт через `iwctl` (интерактивный клиент) и конфиг-файл, а не через отдельный CLI.
+## 3. Постоянная настройка
 
-## Persistent-настройка
+### Через iwd
 
-### Через iwd (`/etc/iwd/main.conf`)
+Файл: `/etc/iwd/main.conf`
 
 ```ini
 [General]
-Country=BY
+Country=<CC>
 ```
 
-См. [iwd.config(5)](https://manpages.ubuntu.com/manpages/noble/man5/iwd.config.5.html). Примечание из upstream: `Country` в iwd — это лишь **запрос** к ядру, окончательное решение принимает kernel/regdb, а для «self-managed wiphy» установка из userspace вообще игнорируется.
+Параметр `Country` в iwd — только запрос к ядру. Окончательное решение
+принимают kernel и regdb, а для `self-managed wiphy` настройка из userspace
+вообще игнорируется.
 
-### Через параметр модуля `cfg80211` (`/etc/modprobe.d/cfg80211.conf`)
+### Через параметр модуля cfg80211
 
+Файл: `/etc/modprobe.d/cfg80211.conf`
+
+```conf
+options cfg80211 ieee80211_regdom=<CC>
 ```
-options cfg80211 ieee80211_regdom=BY
+
+Настройка применяется при загрузке модуля. Её можно применить через
+`modprobe -r cfg80211 && modprobe cfg80211` или после перезагрузки.
+
+> ⚠️ **Важный нюанс**: выгрузка `cfg80211` затрагивает работающий Wi-Fi
+> stack и может оборвать текущее беспроводное соединение. Если прерывать его
+> нельзя, примени настройку при следующей перезагрузке.
+
+## 4. Проверка
+
+После применения снова проверь regulatory domain той же командой, что и до
+изменения:
+
+```bash
+iw reg get
 ```
 
-Применится при загрузке модуля (`modprobe -r cfg80211 && modprobe cfg80211` или после ребута).
+## 5. Что делать не нужно
 
-## Что делать НЕ надо
+- `iwdctl set-domain <CC>` — такой утилиты нет. iwd управляется через
+  интерактивный клиент `iwctl` и конфигурационный файл, а не через отдельную
+  команду для установки домена.
+- `echo "<CC>" > /sys/devices/virtual/net/wlan0/phy80211/country_code` — этот
+  sysfs-атрибут доступен только для чтения, запись игнорируется.
 
-- ❌ `iwdctl set-domain <CC>` — такой утилиты нет.
-- ❌ `echo "BY" > /sys/devices/virtual/net/wlan0/phy80211/country_code` — этот sysfs-атрибут read-only, запись игнорируется.
+## Related docs
 
-## Ссылки
+- [NetworkManager + iwd](networkmanager-iwd.md) — выбор `iwd` как Wi-Fi
+  backend для NetworkManager.
+
+## References
 
 - [iwd.config(5) — секция [General].Country](https://manpages.ubuntu.com/manpages/noble/man5/iwd.config.5.html)
 - [kernel.org: Regulatory](https://wireless.wiki.kernel.org/en/developers/regulatory)
