@@ -8,27 +8,36 @@ verified_on: [asus-b5402]
 
 # Гипотеза: глобальный -O2 против глобального -O3 (Experiment B)
 
-Эксперимент B отвечает на вопрос: должен ли глобальный optimization baseline
-системы оставаться `-O3`, или разумнее глобальный `-O2` с package-specific
-`-O3` только там, где он даёт измеримый выигрыш?
+## Статус и принятое решение
 
-Статус: **COMPLETE** — B1–B4, финальный review и optimization policy decision
-зафиксированы (2026-09-20): global `-O2` + selective benchmark-proven `-O3`;
-политика применена к `/etc/portage` 2026-09-20, полный rebuild завершён
+Experiment B — **COMPLETE**: B1–B4 завершены, а optimization policy decision
+зафиксирован 2026-09-20 — global `-O2` + selective benchmark-proven `-O3`.
+Политика применена к `/etc/portage` 2026-09-20, полный rebuild завершён
 2026-09-21.
-Результаты измерений — в
+
+Результаты измерений находятся в
 [o2-o3-benchmarks.md](o2-o3-benchmarks.md), журнал и решение — в
 [results.md](results.md).
 
-## 1. Что сравнивается
+Остальная часть документа сохраняет исходную hypothesis и заранее заданный
+experimental design, по которым принималось решение. Это decision/experiment
+record; current production configuration находится в
+[системной документации](../../systems/asus-b5402/system/boot-and-portage.md).
 
-| | Production сейчас | Рабочая гипотеза |
-|--|-------------------|------------------|
+## 1. Исходный вопрос и experimental baseline
+
+Исходный вопрос Experiment B: должен ли глобальный optimization baseline
+системы оставаться `-O3`, или разумнее глобальный `-O2` с package-specific
+`-O3` только там, где он даёт измеримый выигрыш?
+
+| | Production baseline at experiment start | Candidate policy |
+|--|-----------------------------------------|------------------|
 | CFLAGS/CXXFLAGS | `-O3` глобально | `-O2` глобально |
 | LTO | ThinLTO глобально где поддерживается | ThinLTO без изменений |
 | Точечные исключения | `package.env` как есть | `-O3` только пакетам с измеренным выигрышем |
 
-Production policy в рамках эксперимента не меняется.
+По заранее заданному design production policy не менялась до завершения
+измерений, принятия решения и отдельного применения.
 
 ## 2. Почему -O3 — не гарантированно быстрее
 
@@ -70,6 +79,10 @@ runtime libraries, версия пакета и benchmark workload остают�
 - Повторять или чередовать прогоны, чтобы отделить эффект от прогрева (page
   cache, tmpfs, ccache).
 
+Канонические правила измерений и интерпретации вынесены в
+[benchmark-methodology.md](benchmark-methodology.md); новые methodology rules
+этот документ не добавляет.
+
 ## 4. Метрики
 
 | Метрика | Как снимать |
@@ -86,6 +99,8 @@ runtime libraries, версия пакета и benchmark workload остают�
 
 ## 5. План и критерии выбора пакетов
 
+### Завершённые gates и rollout
+
 | Gate | Класс workload | Статус |
 |------|----------------|--------|
 | B1 | compute-heavy codec (`media-libs/libde265-1.1.3`) | COMPLETE |
@@ -99,7 +114,10 @@ runtime libraries, версия пакета и benchmark workload остают�
 
 B4 — последний гейт Experiment B; новых гейтов (B5) не планируется.
 
-Критерии для будущих пакетов:
+### Reusable criteria для будущих package-specific benchmark
+
+Следующий список не является roadmap незавершённого B5. Это критерии выбора
+пакетов для возможных будущих package-specific `-O3` benchmark:
 
 - воспроизводимый runtime workload;
 - одинаковая версия пакета в обеих ветках;
@@ -170,12 +188,16 @@ crypto, desktop/graphics):
 [o2-o3-benchmarks.md](o2-o3-benchmarks.md).
 
 Политика применена к `/etc/portage` 2026-09-20: `make.conf` и env-файлы
-переведены на `-O2`, resolver рассчитывается; полный rebuild `@world` под
-`-O2` завершён 2026-09-21 (post-rebuild boot/runtime проверены).
-Selective `-O3` rules не созданы, `env/llvm-23` не
-существует.
+переведены на `-O2`, resolver-проверка прошла успешно; полный rebuild `@world`
+под `-O2` завершён 2026-09-21 (post-rebuild boot/runtime проверены).
+Selective `-O3` rules не созданы. На этом checkpoint `env/llvm-23` не
+существовал; это состояние experiment checkpoint, а не утверждение о текущей
+системе.
 
-## 7. Критерий решения
+## 7. Заранее заданный критерий решения
+
+Этот критерий был сформулирован до получения итогов B1–B4 и отделён от
+принятого решения ниже.
 
 Кандидат на будущую политику: `-O2` глобально, `-O3` точечно там, где измерен
 полезный эффект. Принять его можно, только если на представительном наборе
@@ -210,5 +232,15 @@ weak/questionable (~1.2% за ~12.3% `.text`), zstd — смешанный ре�
 OpenSSL и Mesa — без преимущества.
 
 > Решение применено 2026-09-20: `make.conf` и env-файлы переведены на `-O2`,
-> resolver рассчитывается. Полный `@world` rebuild под `-O2` завершён
-> 2026-09-21; LLVM 23 rollout — следующий controlled шаг (NOT STARTED).
+> resolver-проверка прошла успешно. Полный `@world` rebuild под `-O2`
+> завершён 2026-09-21; на этом checkpoint LLVM 23 rollout оставался следующим
+> controlled шагом (NOT STARTED).
+
+## Related records
+
+- [Статус LLVM 23 experiment](README.md)
+- [Каноническая методика benchmark](benchmark-methodology.md)
+- [Полные данные B1–B4](o2-o3-benchmarks.md)
+- [Журнал результатов и gates](results.md)
+- [Toolchain-праймер](toolchain-primer.md)
+- [Current system source of truth](../../systems/asus-b5402/system/boot-and-portage.md)

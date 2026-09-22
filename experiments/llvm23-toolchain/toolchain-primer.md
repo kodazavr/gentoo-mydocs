@@ -8,15 +8,28 @@ verified_on: [asus-b5402]
 
 # Toolchain-праймер: пять независимых слоёв
 
-Ментальная модель сборочной цепочки для эксперимента [LLVM 23](README.md):
-какие ручки существуют, какие из них крутит эксперимент, а какие остаются
-нетронутыми. Это не справочник по LLVM. Факты о машине — из baseline Gate A0
-([results.md](results.md)), снятого 2026-09-20. Experiment A (LLVM 23
-compatibility) завершён: A1–A4 PASS. Experiment B (-O2 vs -O3) завершён:
-B1–B4, optimization policy decision — global `-O2` + selective
-benchmark-proven `-O3`. Политика применена к `/etc/portage` 2026-09-20
-(полный rebuild завершён 2026-09-21); постоянный `env/llvm-23` — следующий
-controlled шаг (NOT STARTED).
+Документ даёт mental model пяти независимых слоёв toolchain для эксперимента
+[LLVM 23](README.md): какие настройки менялись, а какие оставались
+нетронутыми. Это conceptual reference, а не справочник по LLVM и не описание
+текущей конфигурации системы.
+
+Фактические значения ниже относятся к historical Gate A0 baseline, снятому
+2026-09-20 и записанному в [results.md](results.md). Current source of truth
+системы находится в
+[документе о загрузке и Portage](../../systems/asus-b5402/system/boot-and-portage.md).
+Permanent `env/llvm-23` и controlled rollout не являются содержанием этого
+primer.
+
+## Статус эксперимента в этих записях
+
+- Experiment A (LLVM 23 compatibility) — **COMPLETE**, A1–A4 PASS.
+- Experiment B (-O2 vs -O3) — **COMPLETE**, B1–B4.
+- Optimization policy decision: global `-O2` + selective benchmark-proven
+  `-O3`.
+- Политика применена к `/etc/portage` 2026-09-20; полный rebuild завершён
+  2026-09-21.
+- Permanent `env/llvm-23` / controlled rollout — **NOT STARTED** в контексте
+  этих записей.
 
 ## 1. Пять слоёв
 
@@ -37,9 +50,9 @@ unwinder   → libgcc_s / libunwind
 | unwinder | раскрутка стека: исключения C++, `backtrace`, профилировщики |
 
 Слои почти ортогональны: «всё GNU» и «всё LLVM» — только два угла пространства
-валидных комбинаций. Стек этой машины смешанный, и это норма.
+валидных комбинаций. В baseline стек этой машины был смешанным, и это норма.
 
-## 2. Конфигурация машины (Gate A0, 2026-09-20)
+## 2. Historical experiment baseline — Gate A0, 2026-09-20
 
 | Слой | Значение | Чем задано |
 |------|----------|------------|
@@ -51,9 +64,10 @@ unwinder   → libgcc_s / libunwind
 | rtlib | libgcc | `gentoo-rtlib.cfg` → `--rtlib=libgcc` |
 | unwinder | libgcc_s | `gentoo-unwindlib.cfg` → `--unwindlib=libgcc` |
 
-Cfg слота 23 идентичен слоту 22: `bfd` / `libgcc` / `libstdc++` / `libgcc`.
-Clang 23 уже настроен на тот же GNU-рантайм, поэтому смена compiler/linker в
-пилоте не тянет за собой смену stdlib, rtlib и unwinder.
+В baseline cfg слота 23 был идентичен слоту 22: `bfd` / `libgcc` /
+`libstdc++` / `libgcc`. Clang 23 был настроен на тот же GNU-рантайм, поэтому
+смена compiler/linker в пилоте не тянула за собой смену stdlib, rtlib и
+unwinder.
 
 ## 3. Почему Clang нормально живёт на libstdc++ + libgcc
 
@@ -87,22 +101,22 @@ Clang — это driver: он сам выбирает линкер по `-fuse-l
 - Сборка пакета в Portage: `LDFLAGS` из `make.conf` содержит `-fuse-ld=lld` →
   линкуется LLD независимо от cfg-дефолтов.
 - Bare-вызов (`clang++ test.cpp` руками, без флагов): берётся дефолт из
-  `Файл: /etc/clang/<slot>/gentoo-linker.cfg`, сейчас `-fuse-ld=bfd`.
+  `Файл: /etc/clang/<slot>/gentoo-linker.cfg`; в baseline это был
+  `-fuse-ld=bfd`.
 
 Отсюда асимметрия baseline: Portage linker = LLD, bare clang = bfd.
 Асимметрия уже кусала (PATH-дрейф bare clang, июль 2026 — см. `CHECKPOINT.md`).
 Практический вывод для пилота: linker provenance проверяют по самому ELF
 (`readelf`), а не по тому, какой clang «должен был» собирать пакет.
 
-Про PATH на этой машине (проверено 2026-09-20): `/usr/lib/llvm/22/bin` стоит в
-PATH раньше `/usr/lib/llvm/23/bin` (задано через `/etc/env.d/`), поэтому bare
-имена `clang`, `ld.lld` резолвятся в слот 22, а до Clang 23 можно дотянуться
-только абсолютным путём `/usr/lib/llvm/23/bin/...`. Поэтому pilot и использует
-абсолютные пути.
+В baseline от 2026-09-20 `/usr/lib/llvm/22/bin` стоял в PATH раньше
+`/usr/lib/llvm/23/bin` (задано через `/etc/env.d/`), поэтому bare-имена
+`clang`, `ld.lld` резолвились в слот 22, а Clang 23 вызывался только абсолютным
+путём `/usr/lib/llvm/23/bin/...`. Поэтому pilot использовал абсолютные пути.
 
 ## 6. Что делают USE-флаги Gentoo
 
-Дефолты bare clang на этой машине генерируют отдельные cfg-пакеты (подписаны в
+В baseline дефолты bare clang генерировали отдельные cfg-пакеты (подписаны в
 комментариях самих cfg): `llvm-core/clang-linker-config`,
 `llvm-runtimes/clang-rtlib-config`, `llvm-runtimes/clang-stdlib-config`,
 `llvm-runtimes/clang-unwindlib-config`. Их USE-флаги проверены в VDB
@@ -126,10 +140,14 @@ PATH раньше `/usr/lib/llvm/23/bin` (задано через `/etc/env.d/`)
 2. `default-*` меняют только дефолты bare-вызовов; сборки Portage задают флаги
    явно и дефолты переопределяют.
 
-Все эти флаги в первой фазе не трогаем (правило 7 из agent-prompt): текущие
-cfg слота 23 гарантируют GNU-рантайм по умолчанию.
+По design первой фазы эти флаги не менялись (правило 7 из agent-prompt): cfg
+слота 23 обеспечивали GNU-рантайм по умолчанию.
 
 ## 7. Как слои ложатся на эксперимент
+
+Таблица ниже фиксирует исходный design и mapping экспериментов. Experiment A
+и B завершены; Experiment C остаётся отдельной незавершённой фазой, а переход
+на `libc++` не входит в план первых фаз.
 
 | Гипотеза | Меняет | Сохраняет |
 |----------|--------|-----------|
@@ -150,3 +168,10 @@ Gate A3 доказал это на практике: `mesa_clc` собран Cla
 линкуется с `libLLVM.so.22.1`/`libclang-cpp.so.22.1`. Конфигурация «новым
 компилятором собираем, на старые LLVM-библиотеки линкуемся» — валидна (но не
 обобщается автоматически на все ebuild, см. results.md).
+
+## Related records
+
+- [Статус LLVM 23 experiment](README.md)
+- [Журнал результатов](results.md)
+- [Experiment B: -O2 против -O3](optimization-o2-o3.md)
+- [Current system source of truth](../../systems/asus-b5402/system/boot-and-portage.md)
