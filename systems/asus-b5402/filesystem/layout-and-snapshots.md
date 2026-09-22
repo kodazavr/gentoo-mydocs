@@ -8,15 +8,37 @@ verified_on: [asus-b5402]
 
 # Btrfs и Snapper на ASUS ExpertBook B5402
 
-Перенесённая запись конфигурации, перепроверена 2026-09-22: Btrfs — по живому
-выводу `findmnt`, Snapper — по конфигу `/etc/snapper/configs/root`.
+## Current state
 
-## Btrfs
+- Корневая файловая система — Btrfs, плоский (flat) набор субволюмов:
+  `@`, `@home`, `@snapshots` и отдельные субвольмы под сборку и кэши.
+- Сжатие — `zstd:3`.
+- Рабочая директория Portage `/var/tmp/portage` — tmpfs 16 GiB.
+- Snapper создаёт timeline/boot-снимки по systemd timers.
+- Автоматических pre/post-снимков вокруг emerge сейчас нет.
 
-Субволюмы подтверждены монтированием 2026-09-12: `@`, `@home`, `@snapshots`,
-`@var_log`, `@var_cache`, `@distfiles`, `@ccache`, `@portage_tree`, `@docker`,
-`@libvirt` и `@portage_tmp`. Опции NVMe — `compress=zstd:3`, `noatime`,
-`discard=async`, `space_cache=v2`.
+## Btrfs layout
+
+Субвольмы:
+
+```text
+@               — корень системы
+@home
+@snapshots
+@var_log
+@var_cache
+@distfiles
+@ccache
+@portage_tree
+@docker
+@libvirt
+@portage_tmp
+```
+
+Опции монтирования NVMe: `compress=zstd:3`, `noatime`, `discard=async`,
+`space_cache=v2`.
+
+## Build and cache storage
 
 Сборочная цепочка Portage вынесена из снапшотируемого корня:
 
@@ -29,21 +51,45 @@ verified_on: [asus-b5402]
 | `@portage_tree` | `/var/db/repos/gentoo` | дерево Gentoo |
 
 Рабочая директория `/var/tmp/portage` — tmpfs размером 16 GiB
-(`uid=portage`, `nosuid`, `nodev`, `noatime`), подтверждена 2026-09-12.
+(`uid=portage`, `nosuid`, `nodev`, `noatime`).
 
 ## Snapper
 
-Конфигурация `root` проверена 2026-09-22: `ALLOW_GROUPS="wheel"`,
-`SYNC_ACL="yes"`, лимиты — пять часовых, семь дневных, одна недельная, ноль
-месячных (`TIMELINE_LIMIT_*`), `NUMBER_LIMIT="10"` (важные — 5),
-`SPACE_LIMIT="0.8"`. Автоматизация — systemd timers (timeline, cleanup, boot).
+Snapper создаёт timeline/boot-снимки. Автоматических pre/post-снимков
+вокруг emerge сейчас нет.
 
-Хук Portage в `/etc/portage/bashrc` отсутствует (проверено 2026-09-22): bashrc
-содержит только `PORTAGE_SCHEDULING_COMMAND` для p-cores, pre/post-снимков на
-emerge не создаётся.
+Конфигурация `root`:
 
-## Общие руководства
+```text
+ALLOW_GROUPS="wheel"
+SYNC_ACL="yes"
+TIMELINE_LIMIT_HOURLY=5
+TIMELINE_LIMIT_DAILY=7
+TIMELINE_LIMIT_WEEKLY=1
+TIMELINE_LIMIT_MONTHLY=0
+NUMBER_LIMIT=10
+NUMBER_LIMIT_IMPORTANT=5
+SPACE_LIMIT=0.8
+```
+
+`TIMELINE_LIMIT_*` — сколько timeline-снимков хранить; `NUMBER_LIMIT` —
+лимит number-cleanup, а не отдельный лимит снимков emerge.
+
+Автоматизация — systemd timers (timeline, cleanup, boot).
+
+Хук Portage в `/etc/portage/bashrc` отсутствует: bashrc содержит только
+`PORTAGE_SCHEDULING_COMMAND` для p-cores, pre/post-снимков на emerge
+не создаётся.
+
+## Verification
+
+- Btrfs перепроверен по живому выводу `findmnt` 2026-09-22; субволюмы
+  подтверждены монтированием 2026-09-12.
+- `/var/tmp/portage` (tmpfs 16 GiB) подтверждён 2026-09-12.
+- Snapper проверен по конфигу `/etc/snapper/configs/root` 2026-09-22.
+- Отсутствие Portage-хука проверено по `/etc/portage/bashrc` 2026-09-22.
+
+## Related docs
 
 - [Структура Btrfs](../../../filesystem/btrfs-setup.md)
 - [Snapper](../../../filesystem/snapper-backups.md)
-

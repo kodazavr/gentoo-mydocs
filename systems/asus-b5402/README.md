@@ -16,13 +16,13 @@ verified_on: [asus-b5402]
 - Gentoo hardened/systemd (no-multilib); основной toolchain Clang/LLD 22,
   глобально `-O2` + ThinLTO.
 - Intel Core i7-1260P (Alder Lake, гибридные P/E-ядра).
-- Графика Intel Iris Xe — драйвер i915, Mesa `intel zink`, Vulkan ANV.
+- Графика Intel Iris Xe — драйвер ядра i915, Mesa iris, Vulkan ANV.
 - Рабочий стол — Niri (чистый Wayland) + Noctalia v5; вход через
   greetd/tuigreet.
 - Ядро `7.2.7-bdsm` — собирается LLVM 23.1.1; загрузка systemd-boot → UKI
   (Dracut) → LUKS2/TPM2 → Btrfs.
-- Хранилище — Btrfs + Snapper; второй NVMe отведён под резервные копии (план
-  применён не полностью).
+- Хранилище — Btrfs + Snapper; второй NVMe: состояние проверено, план
+  backup/data не применён (осталась старая разметка Arch/LUKS).
 - Питание — TLP, заряд батареи ограничен 80%.
 - Сеть — NetworkManager + iwd (Intel AX201), nftables, mesh-VPN NetBird.
 - Безопасность — Secure Boot, TPM 2.0, AppArmor, doas.

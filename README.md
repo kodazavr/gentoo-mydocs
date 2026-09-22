@@ -126,7 +126,7 @@ Clang/LLD, systemd-boot + UKI, Btrfs + Snapper, Secure Boot + TPM2.
 | [troubleshooting/docker-29-iptables-missing](troubleshooting/docker-29-iptables-missing.md) | Docker 29 не запускается из-за отсутствия команды `iptables` |
 | [troubleshooting/docker-libvirt-nftables](troubleshooting/docker-libvirt-nftables.md) | Решение конфликта Docker и Libvirt в nftables |
 | [troubleshooting/networkmanager-iwd-mac-randomization](troubleshooting/networkmanager-iwd-mac-randomization.md) | MAC-рандомизация с NetworkManager и iwd |
-| [troubleshooting/luks-tpm2-unlock-after-uki-rebuild](troubleshooting/luks-tpm2-unlock-after-uki-rebuild.md) | TPM2-авторазблокировка LUKS ломается после смены cmdline/пересборки UKI |
+| [troubleshooting/luks-tpm2-unlock-after-uki-rebuild](troubleshooting/luks-tpm2-unlock-after-uki-rebuild.md) | Диагностика TPM2/PCR mismatch после изменений загрузочной цепочки |
 
 ## ⚙️ Управление конфигурацией
 
