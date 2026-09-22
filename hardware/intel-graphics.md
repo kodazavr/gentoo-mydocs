@@ -2,7 +2,7 @@
 kind: guide
 scope: general
 status: draft
-last_verified: null
+last_verified: 2026-09-22
 verified_on: [asus-b5402]
 ---
 

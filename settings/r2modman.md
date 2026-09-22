@@ -2,7 +2,7 @@
 kind: troubleshooting
 scope: general
 status: current
-last_verified: null
+last_verified: 2026-09-22
 verified_on: [asus-b5402]
 ---
 
@@ -38,7 +38,7 @@ chmod +x ~/.local/bin/steam
 Убедитесь, что ~/.local/bin находится в начале переменной $PATH. Для Fish shell:
 
 ```bash
-set -u FISH_USER_PATHS ~/.LOCAL/BIN $FISH_USER_PATHS
+fish_add_path ~/.local/bin
 ```
 
 3. Конфигурация r2modman

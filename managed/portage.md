@@ -2,7 +2,7 @@
 kind: guide
 scope: general
 status: current
-last_verified: null
+last_verified: 2026-09-22
 verified_on: [asus-b5402]
 ---
 
@@ -137,7 +137,7 @@ eix-update
 | `eix <package>` | Поиск пакета по точному имени или части имени. |
 | `eix -S <keyword>` | Поиск по описанию (slow, но тщательный). |
 | `eix -I` | Показать только установленные пакеты. |
-| `eix -c` | Показать только пакеты в нестабильной версии (~). |
+| `eix -c` | Компактный вывод результата поиска. |
 | `eix --only-names` | Вывести только имена пакетов. |
 
 Пример: найти все пакеты, связанные с python:
@@ -199,7 +199,7 @@ equery uses www-client/firefox
 emerge --sync
 ```
 
-Или для более быстрой синхронизации с использованием git (рекомендуется):
+Или в тихом режиме (меньше вывода в журнал):
 
 ```bash
 emerge --sync --quiet
@@ -244,7 +244,7 @@ emerge -uav sys-apps/portage
 
 - **dispatch-conf** (рекомендуется) – интерактивное слияние.
 - **etc-update** – более простой, но менее гибкий.
-- **conf-update** – из пакета app-portage/portage-utils.
+- **conf-update** – из пакета app-portage/conf-update.
 
 Пример с dispatch-conf:
 
@@ -363,21 +363,15 @@ emerge -av sys-kernel/installkernel sys-kernel/dracut
 ```
 
 Настройка:
-В `/etc/portage/make.conf` можно определить предпочтительный способ установки ядра. Например, для автоматического обновления загрузчика GRUB:
+Способ установки ядра задаётся в `/etc/kernel/install.conf`. Пример — UKI через Dracut, как на эталонной машине:
 
-```bash
-# Использовать installkernel с поддержкой grub
-INSTALLKERNEL_OPTS="--grub"
+```ini
+layout=uki
+initrd_generator=dracut
+uki_generator=dracut
 ```
 
-Для создания initramfs с помощью dracut при установке ядра через make install необходимо настроить installkernel на вызов dracut. В файле `/etc/installkernel.conf` (или через переменные окружения) укажите:
-
-```bash
-# Использовать dracut для создания initramfs
-INITRD_GENERATOR=dracut
-```
-
-Или передавайте опции через INSTALLKERNEL_OPTS.
+Загрузчик определяется USE-флагами пакета `sys-kernel/installkernel` (`systemd-boot`, `grub`, `efistub` и др.), а не опциями в make.conf.
 
 Процесс сборки и установки ядра с использованием dracut:
 
@@ -390,7 +384,7 @@ INITRD_GENERATOR=dracut
 make install
 ```
 
->При этом installkernel скопирует ядро в /boot, создаст initramfs с помощью dracut (если настроено) и обновит загрузчик (если указано `--grub`).
+>При этом kernel-install скопирует ядро, создаст initramfs выбранным генератором (dracut) и соберёт UKI/обновит загрузчик согласно настройке `install.conf` и USE-флагам installkernel.
 
 Преимущества:
 
@@ -473,7 +467,7 @@ glsa-check -f all       # применить обновления (после п
 
 ### 10.4. Как восстановить сломанную систему?
 
-Если система не загружается, можно загрузиться с LiveCD, примонтировать разделы и выполнить `emerge -uDN @world` из chroot. Или использовать инструменты восстановления, такие как `gentoo-rescue`.
+Если система не загружается, можно загрузиться с LiveCD, примонтировать разделы и выполнить `emerge -uDN @world` из chroot.
 
 ## 11. Заключение
 

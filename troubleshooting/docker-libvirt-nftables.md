@@ -1,8 +1,8 @@
 ---
 kind: troubleshooting
 scope: general
-status: draft
-last_verified: null
+status: current
+last_verified: 2026-09-22
 verified_on: [asus-b5402]
 ---
 
@@ -12,9 +12,9 @@ verified_on: [asus-b5402]
 > B5402 и прежние версии компонентов вынесены в
 > [`systems/asus-b5402/networking/networkmanager-and-libvirt.md`](../systems/asus-b5402/networking/networkmanager-and-libvirt.md).
 >
-> **Черновик:** корректность правил с несколькими base chains требует
-> отдельной проверки. Не применяй конфигурацию к рабочему firewall без dry-run,
-> резервной копии и доступного способа отката.
+> Решение применено на эталонной системе: конфигурация и runtime-таблицы
+> подтверждены 2026-09-22. Не применяй конфигурацию к другому рабочему
+> firewall без dry-run, резервной копии и доступного способа отката.
 
 ## Проблема
 
@@ -63,33 +63,40 @@ $ doas nft list ruleset | grep -A 5 "chain FORWARD"
 
 Это единственный файл, который загружает `nftables.service` при старте системы (проверяется через `ConditionPathExists=/etc/nftables/rules/main.nft`).
 
-### Содержимое `/etc/nftables/rules/main.nft`
+### Фактическая структура на эталонной системе (проверено 2026-09-22)
+
+`main.nft` — точка входа, загружаемая `nftables.service`, — подключает
+правила инклудами:
+
+Файл: `/etc/nftables/rules/main.nft`
 
 ```nft
 #!/usr/sbin/nft -f
 
 flush ruleset
 
-# === Основные правила (ваши существующие) ===
-# table ip filter { ... }
-# table ip nat { ... }
+include "/etc/nftables/rules/libvirt_fix.nft"
+include "/etc/nftables/rules/tailscale.nft"
+```
 
-# === Фикс для Libvirt bridge ===
-# priority -10 гарантирует выполнение ДО таблиц Docker (priority 0)
+Файл: `/etc/nftables/rules/libvirt_fix.nft` — NAT-маскарадинг для подсетей ВМ
+и сам фикс приоритета:
+
+```nft
+# NAT для виртуальных машин (исходящий трафик)
+table ip nat {
+    chain postrouting {
+        type nat hook postrouting priority 100; policy accept;
+        ip saddr { 192.168.122.0/24, 10.0.0.0/24 } oif != "lo" masquerade
+    }
+}
+
+# Фикс приоритета – принимаем трафик ВМ до того, как Docker его дропнет
 table ip gentoo_bridge_libvirt {
     chain bypass_docker {
         type filter hook forward priority -10; policy accept;
-
-        # Libvirt default network
-        ip saddr 192.168.122.0/24 accept
-        ip daddr 192.168.122.0/24 accept
-
-        # Кастомные сети (k8s, gitlab lab и т.д.)
-        ip saddr 10.0.0.0/24 accept
-        ip daddr 10.0.0.0/24 accept
-
-        # Логирование для отладки (раскомментировать при необходимости)
-        # counter log prefix "nft-bridge-drop: " drop
+        ip saddr { 192.168.122.0/24, 10.0.0.0/24 } accept
+        ip daddr { 192.168.122.0/24, 10.0.0.0/24 } accept
     }
 }
 ```
@@ -305,6 +312,10 @@ include "/etc/nftables/rules/libvirt.nft"
 - **Docker:** 29.8.0 (iptables-nft backend)
 - **Libvirt:** 10.x (QEMU/KVM, default NAT network)
 - **Privilege escalation:** doas
+
+Текущее состояние эталонной системы (2026-09-22): Docker 29.8.0 (overlay2),
+Libvirt 12.6.0, nftables 1.1.6; runtime-таблицы `ip nat`,
+`ip gentoo_bridge_libvirt`, `ip tailscale_nat` подтверждены `nft list tables`.
 
 ---
 

@@ -2,7 +2,7 @@
 kind: guide
 scope: general
 status: current
-last_verified: null
+last_verified: 2026-09-22
 verified_on: [asus-b5402]
 ---
 
@@ -16,21 +16,30 @@ verified_on: [asus-b5402]
 
 Для работы требуется связка из нескольких порталов:
 
-- `gui-libs/xdg-desktop-portal` — Основной демон.
-- `gui-libs/xdg-desktop-portal-gnome` (или gtk) — Для системных диалогов и тем.
-- `gui-libs/xdg-desktop-portal-wlr` (или нативный портал Niri) — Для захвата экрана (Screencasting).
+- `sys-apps/xdg-desktop-portal` — основной демон.
+- `sys-apps/xdg-desktop-portal-gtk` — системные диалоги (FileChooser, AppChooser, Settings).
+- `sys-apps/xdg-desktop-portal-gnome` — ScreenCast и Screenshot: Niri реализует mutter ScreenCast D-Bus API, который обслуживает именно GNOME-бэкенд.
+- `gui-libs/xdg-desktop-portal-wlr` — альтернатива для окружений на wlr-протоколах; на Niri не используется.
 
 ## 2. Конфигурация (portals.conf)
 
 С выходом обновлений xdg-desktop-portal необходимо явно указывать, какой портал за что отвечает.
 
-Файл: `~/.config/xdg-desktop-portal/niri-portals.conf` (или conf для конкретного десктопа)
+Файл: `~/.config/xdg-desktop-portal/niri-portals.conf` (проверен на asus-b5402 2026-09-22)
 
 ```ini
 [preferred]
+# По умолчанию используем GTK, он самый стабильный для общих задач
 default=gtk
-org.freedesktop.impl.portal.ScreenCast=wlr
-org.freedesktop.impl.portal.Screenshot=wlr
+# Специфичные вещи для Niri
+org.freedesktop.impl.portal.Screenshot=gnome
+# шаринг окон
+org.freedesktop.impl.portal.ScreenCast=gnome
+# GTK
+org.freedesktop.impl.portal.FileChooser=gtk
+org.freedesktop.impl.portal.AppChooser=gtk
+# чтобы звук и уведомления точно шли через GTK бэкенд
+org.freedesktop.impl.portal.Settings=gtk
 ```
 
 ## 3. Интеграция с D-Bus

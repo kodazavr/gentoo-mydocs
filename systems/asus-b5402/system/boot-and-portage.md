@@ -129,11 +129,13 @@ sys-firmware/intel-microcode  dist-kernel initramfs split-ucode hostonly -vanill
 
 - Прежний флаг `-generic` у gentoo-kernel устарел: в текущих ebuild его
   нет (схема сменилась на `generic-uki`), из живой конфигурации он убран.
-- `savedconfig` ядра хранится в `/etc/portage/savedconfig/sys-kernel/`:
-  базовый файл `gentoo-kernel` и версионные `gentoo-kernel-7.2.3/.4/.5`
-  (приоритет PF > PN по правилу eclass); файлы `*.bak` не используются.
+- `savedconfig` ядра хранится в `/etc/portage/savedconfig/sys-kernel/`
+  (проверено 2026-09-22): базовый файл `gentoo-kernel` и текущий версионный
+  `gentoo-kernel-7.2.6` (приоритет PF > PN по правилу eclass); версионные
+  файлы старых ядер удалены, файлов `*.bak` нет.
 - При выключенном `savedconfig` у linux-firmware сохранённый список
-  `linux-firmware-20260810` не применяется — судьба файла не решена.
+  `linux-firmware-20260916` не применяется — судьба файла не решена
+  (обновлён с прежнего `20260810`, проверено 2026-09-22).
 - Точечные `llvm_slot_*`-правила удалены 2026-09-12: при установленных
   слотах LLVM 22 и 23 все потребители (mesa, mesa_clc, niri, bpftool, perf,
   firefox, xwayland-satellite) резолвятся в 22, потому что слот 23 их
@@ -203,8 +205,13 @@ sys-firmware/intel-microcode  dist-kernel initramfs split-ucode hostonly -vanill
   runtime ABI; наличие compiler-rt/sanitizer runtimes не переводит систему
   на LLVM runtimes — это отдельный [Experiment
   C](../../../experiments/llvm23-toolchain/README.md) (NOT STARTED).
-- **OpenVPN**: `net-vpn/openvpn -dco` — out-of-tree `ovpn-dco` kernel
-  module не вводится без отдельного обоснования/теста.
+- **OpenVPN**: `net-vpn/openvpn dco kernel-ovpn` (решение 2026-09-22, по
+  итогам инцидента с `ovpn-dco`): DCO включён через mainline in-kernel модуль
+  `ovpn` (`CONFIG_OVPN=m`, собирается с ядром). Out-of-tree
+  `net-vpn/ovpn-dco` не вводится: он требует снимать
+  `CONFIG_TRIM_UNUSED_KSYMS` и дублирует in-kernel модуль; при включении
+  `dco` без `kernel-ovpn` пакет `ovpn-dco` падает в setup phase на
+  kernel-config check.
 
 Продолжение review (desktop и прикладной стек):
 

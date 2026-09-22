@@ -2,7 +2,7 @@
 kind: guide
 scope: general
 status: current
-last_verified: null
+last_verified: 2026-09-22
 verified_on: [asus-b5402]
 ---
 
@@ -31,9 +31,13 @@ doas snapper -c root setup-acl
 
 ## 2. Автоматизация в Gentoo (Portage)
 
-Для интеграции с пакетным менеджером используется хук в `/etc/portage/bashrc`. При каждом `emerge` создается пара снимков типа Pre и Post.
-
-> **Примечание**: Снимки с описанием "Before emerge..." и "After emerge..." связаны между собой ID, что позволяет видеть разницу, внесенную конкретным пакетом.
+Интеграция с пакетным менеджером ранее выполнялась хуком в
+`/etc/portage/bashrc`: при каждом `emerge` создавалась пара снимков Pre и
+Post, связанных общим ID. В текущей конфигурации (проверено 2026-09-22) хук
+отсутствует — `/etc/portage/bashrc` содержит только
+`PORTAGE_SCHEDULING_COMMAND` для закрепления сборок за P-cores; pre/post-снимки
+не создаются, `NUMBER_LIMIT` фактически не расходуется. Если пары снимков на
+emerge снова нужны, хук придётся вернуть.
 
 ## 3. Политика очистки (Cleanup)
 

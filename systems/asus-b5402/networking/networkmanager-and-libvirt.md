@@ -2,13 +2,13 @@
 kind: system
 scope: system
 status: draft
-last_verified: null
+last_verified: 2026-09-22
 verified_on: [asus-b5402]
 ---
 
 # Сеть ASUS ExpertBook B5402
 
-Записанное состояние требует повторной проверки.
+Записанное состояние сверено с системой 2026-09-22.
 
 ## Wi-Fi
 
@@ -36,10 +36,24 @@ verified_on: [asus-b5402]
 
 ## Docker и Libvirt
 
-Старая запись относится к systemd, Docker 29.8.0 с iptables-nft и Libvirt
-10.x. Для обхода Docker `FORWARD policy drop` использовалась отдельная таблица
-nftables с более ранним приоритетом. Подсети и корректность правил нужно
-проверить до применения.
+Проверено 2026-09-22: Docker 29.8.0 (storage driver `overlay2`, iptables-nft),
+Libvirt 12.6.0 (юниты libvirtd/virtqemud системно неактивны — виртуализация
+запускается по мере надобности). Для обхода Docker `FORWARD policy drop`
+применена отдельная таблица `ip gentoo_bridge_libvirt` (priority −10) и
+NAT-маскарадинг: `/etc/nftables/rules/main.nft` подключает `libvirt_fix.nft`
+и `tailscale.nft`; runtime-таблицы `ip nat`, `ip gentoo_bridge_libvirt`,
+`ip tailscale_nat` подтверждены `nft list tables`.
+
+## Mesh VPN
+
+Проверено 2026-09-22:
+
+- NetBird (`net-vpn/netbird`) — основной mesh-VPN. Интерфейс `wt0`
+  (WireGuard, NM-профиль `wt0`, external), процесс поднимает шаблонный юнит
+  `netbird@main.service` (активен с загрузки 2026-09-21; сам юнит disabled).
+- Tailscale (`net-vpn/tailscale`) установлен, но `tailscaled`
+  disabled+inactive; таблица `ip tailscale_nat` загружается include'ом из
+  `/etc/nftables/rules/main.nft`.
 
 ## Общие руководства
 

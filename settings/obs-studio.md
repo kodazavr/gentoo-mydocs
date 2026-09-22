@@ -360,7 +360,7 @@ lscpu | grep -i virtualization
 emerge -av sys-kernel/linux-firmware
 emerge -av media-video/libva-utils
 emerge -av media-libs/libva-intel-media-driver
-emerge -av media-libs/onevpl-intel-gpu
+emerge -av media-libs/vpl-gpu-rt
 ```
 
 ### 3. Настройка групп пользователей
@@ -550,19 +550,18 @@ flatpak override --user --talk-name=org.freedesktop.impl.portal.Screenshot org.o
 Это "пропущенное звено" в захвате экрана в Wayland. Без порталов захват экрана в Wayland часто не работает:
 ```bash
 emerge -av sys-apps/xdg-desktop-portal
-emerge -av gui-libs/xdg-desktop-portal-wlr
 ```
 
-Для пользователей GNOME можно установить:
+Для Niri установите GNOME- и GTK-бэкенды (Niri реализует mutter ScreenCast D-Bus API, который обслуживает GNOME-портал):
 ```bash
-emerge -av gnome-extra/xdg-desktop-portal-gnome
+emerge -av sys-apps/xdg-desktop-portal-gnome sys-apps/xdg-desktop-portal-gtk
 ```
 
-Для Niri рекомендуется убедиться, что установлен xdg-desktop-portal-gnome для корректной работы окон выбора источников.
+Для окружений на wlr-протоколах существует `gui-libs/xdg-desktop-portal-wlr` — на Niri он не используется.
 
 После установки перезапустите сеанс Wayland или выполните:
 ```bash
-systemctl --user restart xdg-desktop-portal xdg-desktop-portal-wlr
+systemctl --user restart xdg-desktop-portal xdg-desktop-portal-gnome
 ```
 
 ### Проверка разрешений:

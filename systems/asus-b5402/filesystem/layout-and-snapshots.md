@@ -2,14 +2,14 @@
 kind: system
 scope: system
 status: draft
-last_verified: null
+last_verified: 2026-09-22
 verified_on: [asus-b5402]
 ---
 
 # Btrfs и Snapper на ASUS ExpertBook B5402
 
-Перенесённая запись конфигурации. Раздел Btrfs подтверждён монтированием
-2026-09-12; раздел Snapper не перепроверялся.
+Перенесённая запись конфигурации, перепроверена 2026-09-22: Btrfs — по живому
+выводу `findmnt`, Snapper — по конфигу `/etc/snapper/configs/root`.
 
 ## Btrfs
 
@@ -33,10 +33,14 @@ verified_on: [asus-b5402]
 
 ## Snapper
 
-Для корня записана конфигурация `root` с доступом группы `wheel`. Указаны пять
-часовых, семь дневных и десять пар Portage-снимков, а также
-`SPACE_LIMIT="0.8"`. Автоматизация использует systemd timers и Portage hook в
-`/etc/portage/bashrc`.
+Конфигурация `root` проверена 2026-09-22: `ALLOW_GROUPS="wheel"`,
+`SYNC_ACL="yes"`, лимиты — пять часовых, семь дневных, одна недельная, ноль
+месячных (`TIMELINE_LIMIT_*`), `NUMBER_LIMIT="10"` (важные — 5),
+`SPACE_LIMIT="0.8"`. Автоматизация — systemd timers (timeline, cleanup, boot).
+
+Хук Portage в `/etc/portage/bashrc` отсутствует (проверено 2026-09-22): bashrc
+содержит только `PORTAGE_SCHEDULING_COMMAND` для p-cores, pre/post-снимков на
+emerge не создаётся.
 
 ## Общие руководства
 

@@ -2,8 +2,8 @@
 kind: guide
 scope: general
 status: current
-last_verified: null
-verified_on: []
+last_verified: 2026-09-22
+verified_on: [asus-b5402]
 ---
 
 # Безопасность: Secure Boot и TPM 2.0
@@ -76,6 +76,11 @@ doas sbctl verify
 ### Что проверено на эталонной машине
 
 На ASUS ExpertBook B5402 выбран набор из одного **PCR 7**. Прошивка ASUS измеряет в PCR 7 и содержимое, меняющееся при пересборке UKI/cmdline, поэтому расширенные наборы здесь лишены смысла: авторазблокировка ломалась и с минимальным набором (эпизоды марта/апреля и 2026-09-14). Токен перезачислен на PCR 7 и проверен реальной загрузкой 2026-09-14. Хронология, диагностика и процедура перезачисления — в [troubleshooting: TPM2-анлок после пересборки UKI](../troubleshooting/luks-tpm2-unlock-after-uki-rebuild.md).
+
+Состояние на 2026-09-22: `sbctl status` — Setup Mode Disabled, Secure Boot
+Enabled, vendor keys microsoft; `sbctl verify` — все присутствующие в ESP
+образы подписаны (включая текущий UKI и systemd-boot). Автоподпись UKI — через
+`uefi_secureboot_cert/key` в `/etc/dracut.conf.d/90-uki.conf`.
 
 ### Процесс привязки
 

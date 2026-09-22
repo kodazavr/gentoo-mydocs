@@ -2,7 +2,7 @@
 kind: system
 scope: system
 status: draft
-last_verified: null
+last_verified: 2026-09-22
 verified_on: [asus-b5402]
 ---
 
@@ -44,4 +44,7 @@ CPU_FLAGS_X86="aes avx avx2 avx_vnni bmi1 bmi2 f16c fma3 mmx mmxext pclmul popcn
 
 - **IOMMU (VT-d)**: Включен по умолчанию с поддержкой масштабируемого режима (`CONFIG_INTEL_IOMMU_DEFAULT_ON=y`, `CONFIG_INTEL_IOMMU_SCALABLE_MODE_DEFAULT_ON=y`, `CONFIG_INTEL_IOMMU_SVM=y`). Это необходимо для безопасного проброса устройств и изоляции памяти.
 - **Intel TXT**: Активирована Trusted Execution Technology (`CONFIG_INTEL_TXT=y`) для защиты от атак на уровне гипервизора/прошивки и создания доверенной среды выполнения.
-- **Intel TDX**: Поддержка Trust Domain Extensions настроена для хоста (`CONFIG_INTEL_TDX_HOST=y`)
+- **Intel TDX**: не применимо к этому процессору — TDX существует только в
+  серверных Xeon (Sapphire Rapids и новее); клиентские Alder Lake этой
+  аппаратуры не имеют. `CONFIG_INTEL_TDX_HOST` в ядре не включён, включать
+  смысла нет (проверено 2026-09-22 по `/proc/config.gz`).

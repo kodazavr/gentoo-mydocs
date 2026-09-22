@@ -2,7 +2,7 @@
 kind: troubleshooting
 scope: general
 status: current
-last_verified: null
+last_verified: 2026-09-22
 verified_on: [asus-b5402]
 ---
 
@@ -92,13 +92,13 @@ ldd $(which pavucontrol) | grep adwaita
 **Решение:**
 ```bash
 # Удаление пакета с очисткой
-sudo emerge --unmerge adw-gtk3
+doas emerge --unmerge adw-gtk3
 
 # Ручная очистка остатков
-sudo rm -rf /usr/share/themes/adw-gtk3-dark/
+doas rm -rf /usr/share/themes/adw-gtk3-dark/
 
 # Переустановка
-sudo emerge adw-gtk3
+doas emerge adw-gtk3
 ```
 
 **Проверка:**
@@ -153,40 +153,40 @@ EOF
 
 /* Основные цвета интерфейса */
 @define-color window_bg_color #0b0e14;
-@define-color window_fg_color #bfbdb6;
+@define-color window_fg_color #d1d1c7;
 @define-color view_bg_color #0b0e14;
-@define-color view_fg_color #bfbdb6;
+@define-color view_fg_color #d1d1c7;
 
 /* Заголовки */
 @define-color headerbar_bg_color #0b0e14;
-@define-color headerbar_fg_color #bfbdb6;
+@define-color headerbar_fg_color #d1d1c7;
 @define-color headerbar_backdrop_color @window_bg_color;
 
 /* Всплывающие окна */
 @define-color popover_bg_color #1e222a;
-@define-color popover_fg_color #bfbdb6;
+@define-color popover_fg_color #d1d1c7;
 
 /* Карточки */
 @define-color card_bg_color #1e222a;
-@define-color card_fg_color #bfbdb6;
+@define-color card_fg_color #d1d1c7;
 
 /* Диалоги */
 @define-color dialog_bg_color #0b0e14;
-@define-color dialog_fg_color #bfbdb6;
+@define-color dialog_fg_color #d1d1c7;
 
 /* Обзор/овервью */
 @define-color overview_bg_color #1e222a;
-@define-color overview_fg_color #bfbdb6;
+@define-color overview_fg_color #d1d1c7;
 
 /* Боковая панель */
 @define-color sidebar_bg_color #1e222a;
-@define-color sidebar_fg_color #bfbdb6;
+@define-color sidebar_fg_color #d1d1c7;
 @define-color sidebar_backdrop_color @sidebar_bg_color;
 @define-color sidebar_border_color @window_bg_color;
 
 /* Вторичная боковая панель */
 @define-color secondary_sidebar_bg_color #0b0e14;
-@define-color secondary_sidebar_fg_color #bfbdb6;
+@define-color secondary_sidebar_fg_color #d1d1c7;
 
 /* Нефокусированные состояния */
 @define-color theme_unfocused_fg_color @window_fg_color;
@@ -214,7 +214,7 @@ rm -rf ~/.cache/gtk-4.0/
 
 # Проверка цветов:
 # - Фон окна: #0b0e14 (тёмно-синий)
-# - Текст: #bfbdb6 (светло-серый)
+# - Текст: #d1d1c7 (светло-серый)
 # - Акценты: #e6b450 (жёлтый/оранжевый)
 ```
 
@@ -227,9 +227,9 @@ rm -rf ~/.cache/gtk-4.0/
 ```
 ~/.config/gtk-4.0/
 ├── gtk.css              # Импорт noctalia.css
-├── gtk-dark.css         # Импорт noctalia.css (идентичен gtk.css)
+├── gtk-dark.css         # Импорт + правила для чистого GTK4
 ├── noctalia.css         # Цветовая схема Noctalia
-└── settings.ini         # Предпочтение тёмной темы
+└── settings.ini         # Тема, иконки, шрифт, тёмная тема
 
 /usr/share/themes/adw-gtk3-dark/gtk-4.0/
 ├── gtk.css              # Системный файл (восстановлен после переустановки)
@@ -343,32 +343,54 @@ GTK_THEME=adw-gtk3-dark <приложение> &
 
 ## Итоговая конфигурация
 
+Проверено на живой системе 2026-09-22. Палитра `noctalia.css` перегенерируется
+Noctalia — актуальные значения сверяй с файлом, а не с этим снимком.
+
 ### Файл: `~/.config/gtk-4.0/gtk.css`
 
 ```css
 @import url("noctalia.css");
-
-/* Минимальные правила для чистого GTK4 (pavucontrol) */
-scale trough {
-  background-color: @card_bg_color;
-}
-
-scale highlight, scale slider {
-  background-color: @accent_bg_color;
-}
 ```
 
 ### Файл: `~/.config/gtk-4.0/gtk-dark.css`
 
+Тёмная тема несёт полный набор правил (GTK4 без libadwaita не подхватывает
+все `@define-color` автоматически):
+
 ```css
 @import url("noctalia.css");
 
-/* Минимальные правила для чистого GTK4 (pavucontrol) */
+/* Для чистого GTK4 (без libadwaita) */
+window {
+  background-color: @window_bg_color;
+  color: @window_fg_color;
+}
+
+headerbar, .titlebar {
+  background-color: @headerbar_bg_color;
+  color: @headerbar_fg_color;
+}
+
+button {
+  background-color: @card_bg_color;
+  color: @card_fg_color;
+}
+
+button:checked, button:active {
+  background-color: @accent_bg_color;
+  color: @accent_fg_color;
+}
+
+/* Для scale/slider (ползунки громкости в pavucontrol) */
 scale trough {
   background-color: @card_bg_color;
 }
 
-scale highlight, scale slider {
+scale highlight {
+  background-color: @accent_bg_color;
+}
+
+scale slider {
   background-color: @accent_bg_color;
 }
 ```
@@ -392,34 +414,34 @@ scale highlight, scale slider {
 @define-color error_fg_color #0b0e14;
 
 @define-color window_bg_color #0b0e14;
-@define-color window_fg_color #bfbdb6;
+@define-color window_fg_color #d1d1c7;
 
 @define-color view_bg_color #0b0e14;
-@define-color view_fg_color #bfbdb6;
+@define-color view_fg_color #d1d1c7;
 
 @define-color headerbar_bg_color #0b0e14;
-@define-color headerbar_fg_color #bfbdb6;
+@define-color headerbar_fg_color #d1d1c7;
 @define-color headerbar_backdrop_color @window_bg_color;
 
 @define-color popover_bg_color #1e222a;
-@define-color popover_fg_color #bfbdb6;
+@define-color popover_fg_color #d1d1c7;
 
 @define-color card_bg_color #1e222a;
-@define-color card_fg_color #bfbdb6;
+@define-color card_fg_color #d1d1c7;
 
 @define-color dialog_bg_color #0b0e14;
-@define-color dialog_fg_color #bfbdb6;
+@define-color dialog_fg_color #d1d1c7;
 
 @define-color overview_bg_color #1e222a;
-@define-color overview_fg_color #bfbdb6;
+@define-color overview_fg_color #d1d1c7;
 
 @define-color sidebar_bg_color #1e222a;
-@define-color sidebar_fg_color #bfbdb6;
+@define-color sidebar_fg_color #d1d1c7;
 @define-color sidebar_backdrop_color @sidebar_bg_color;
 @define-color sidebar_border_color @window_bg_color;
 
 @define-color secondary_sidebar_bg_color #0b0e14;
-@define-color secondary_sidebar_fg_color #bfbdb6;
+@define-color secondary_sidebar_fg_color #d1d1c7;
 
 @define-color theme_unfocused_fg_color @window_fg_color;
 @define-color theme_unfocused_text_color @view_fg_color;
@@ -433,6 +455,11 @@ scale highlight, scale slider {
 
 ```ini
 [Settings]
+gtk-theme-name=adw-gtk3-dark
+gtk-icon-theme-name=Papirus
+gtk-font-name=Adwaita Sans 11
+gtk-cursor-theme-name=DMZ-White
+gtk-cursor-theme-size=24
 gtk-application-prefer-dark-theme=1
 ```
 
