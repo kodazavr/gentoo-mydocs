@@ -8,12 +8,67 @@ verified_on: [asus-b5402]
 
 # Ядро и загрузка: Unified Kernel Image (UKI)
 
-Документ описывает создание UKI с микрокодом, initramfs и командной строкой
-ядра, а также подпись Secure Boot. Перед изменением загрузки подготовь рабочий
-носитель восстановления. Состояние ASUS B5402 записано в
+## Goal / Result
+
+Руководство собирает UKI — единый подписанный EFI-образ, в который входят
+ядро, микрокод, initramfs и командная строка ядра, — и подключает его к
+systemd-boot.
+
+Boot path после настройки:
+
+```text
+systemd-boot
+→ signed UKI
+→ kernel + microcode + initramfs + cmdline
+→ LUKS/Btrfs root
+```
+
+Роли в основной цепочке:
+
+- **Dracut = UKI generator** — собирает initramfs и упаковывает его вместе
+  с ядром и cmdline в файл UKI, подписывает его;
+- **systemd-boot = loader** — находит UKI (Type #2) в `EFI/Linux` на ESP и
+  загружает его;
+- **sbctl = signing/verification** — ключи Secure Boot и проверка подписи
+  (создание ключей и enrollment — в [Secure Boot и TPM 2.0](secure-boot-tpm.md)).
+
+`ukify` — альтернативный генератор UKI, а не этап основной цепочки; он
+рассмотрен в разделе «Альтернативный путь: ukify».
+
+## Applicability
+
+- Gentoo с `sys-kernel/gentoo-kernel` (savedconfig) и systemd;
+- initramfs и UKI собирает Dracut;
+- пример cmdline рассчитан на корень в LUKS2 с Btrfs внутри;
+- подпись — ключами sbctl.
+
+Фактическое состояние эталонной ASUS B5402 записано в
 [системном разделе](../systems/asus-b5402/system/boot-and-portage.md).
 
-## 1. Сборка ядра (gentoo-kernel)
+## Prerequisites / Recovery prerequisites
+
+Изменение загрузочной цепочки может оставить систему без загрузки. До
+начала убедитесь, что есть:
+
+- рабочий способ разблокировки LUKS (пароль);
+- recovery/live носитель;
+- сохранённый рабочий UKI (fallback-образ) в ESP, к которому можно
+  вернуться из меню systemd-boot;
+- понимание ESP: какой это раздел и где в нём лежат systemd-boot и UKI
+  (`EFI/Linux`).
+
+## Основная процедура: Dracut генерирует UKI
+
+```text
+Recommended/example path in this guide: Dracut generates UKI
+Alternative: ukify generates UKI — отдельный раздел ниже
+```
+
+Основная цепочка настраивается линейно: ядро → Dracut → cmdline →
+installkernel → systemd-boot. Конфиги альтернативного пути
+(`/etc/kernel/uki.conf`) в основную процедуру не входят.
+
+### 1. Сборка ядра (gentoo-kernel)
 
 В примере используется `sys-kernel/gentoo-kernel` с поддержкой `savedconfig`.
 
@@ -22,7 +77,7 @@ verified_on: [asus-b5402]
 
 При обновлении ядра Portage автоматически подхватит ваш оптимизированный конфиг и инициирует сборку.
 
-## 2. Конфигурация Dracut (Initramfs и UKI)
+### 2. Конфигурация Dracut (initramfs и UKI)
 
 Dracut собирает initramfs и может упаковать его вместе с ядром в файл UKI.
 Конфигурация разделена на модули для удобства поддержки. Ниже описан путь с
@@ -32,7 +87,7 @@ Dracut как генератором UKI; альтернативный путь 
 > многопоточный генератор архива вместо конвейера `find | cpio` — initramfs
 > собирается заметно быстрее. На содержимое образа не влияет.
 
-### Глобальные настройки (`/etc/dracut.conf.d/00-global.conf`)
+#### Глобальные настройки (`/etc/dracut.conf.d/00-global.conf`)
 
 Минимизируем размер образа и включаем микрокод Intel.
 
@@ -43,7 +98,7 @@ compress="zstd"
 early_microcode="yes"
 ```
 
-### Драйверы и модули (`10-drivers.conf`, `20-modules.conf`)
+#### Драйверы и модули (`10-drivers.conf`, `20-modules.conf`)
 
 Пример включает `i915`, NVMe и компоненты для работы с шифрованием. Для `xe`
 нужна отдельная проверка совместимости.
@@ -69,7 +124,7 @@ omit_dracutmodules+=" network nfs "
 > необходимо пересобрать. Не отключайте сеть в initramfs, если корень или
 > разблокировка LUKS требуют сети.
 
-### Настройка UKI и Secure Boot (90-uki.conf)
+#### Настройка UKI и Secure Boot (90-uki.conf)
 
 Этот файл отвечает за создание финального EFI-файла и его автоматическую подпись.
 
@@ -81,7 +136,7 @@ uefi_secureboot_cert="/var/lib/sbctl/keys/db/db.pem"
 uefi_secureboot_key="/var/lib/sbctl/keys/db/db.key"
 ```
 
-## 3. Параметры командной строки (CMDLINE)
+### 3. Параметры командной строки (CMDLINE)
 
 Все параметры передаются ядру внутри UKI. При подписи UKI они входят в
 проверяемый EFI-образ.
@@ -106,14 +161,12 @@ uefi_secureboot_key="/var/lib/sbctl/keys/db/db.key"
 из этого параметра. После изменения cmdline пересобери и проверь UKI, поскольку
 строка входит в подписанный образ.
 
-## 4. Автоматизация и загрузчик
+### 4. installkernel: генераторы и плагины
 
-systemd-boot находит Type #2 UKI в `EFI/Linux` на ESP. В Gentoo путь сборки
-выбирает `sys-kernel/installkernel` через `/etc/kernel/install.conf`.
+В Gentoo путь сборки выбирает `sys-kernel/installkernel` через
+`/etc/kernel/install.conf`.
 
-### Dracut как генератор UKI
-
-Для текущего пути укажи один генератор UKI:
+Для основного пути укажи один генератор UKI — Dracut:
 
 ```conf
 # /etc/kernel/install.conf
@@ -128,8 +181,9 @@ uki_generator=dracut
 передаёт итоговый файл в `sbctl sign`. Dracut использует
 `uefi_secureboot_cert` и `uefi_secureboot_key` из `90-uki.conf`.
 
-Для этого пути `/etc/kernel/uki.conf` не читается: плагин
-`60-ukify.install` завершается, когда `uki_generator` не равен `ukify`.
+Важно: при `uki_generator=dracut` файл `/etc/kernel/uki.conf` в generation
+path не участвует — плагин `60-ukify.install` завершается, когда
+`uki_generator` не равен `ukify`.
 
 Чтобы ядро после сборки автоматически превращалось в UKI и попадало в ESP,
 для `sys-kernel/installkernel` нужны USE-флаги `systemd-boot ukify dracut uki`:
@@ -139,7 +193,17 @@ uki_generator=dracut
 sys-kernel/installkernel systemd-boot ukify dracut uki -grub -efistub -ugrd -refind
 ```
 
-### Альтернативный путь: ukify как генератор UKI
+### 5. systemd-boot (loader)
+
+Systemd-boot — загрузчик основной цепочки: он автоматически находит Type #2
+UKI в `EFI/Linux` на ESP, куда образ уже скопирован плагином
+`90-uki-copy.install`.
+
+## Альтернативный путь: ukify генерирует UKI
+
+```text
+Alternative: ukify generates UKI
+```
 
 `ukify` — альтернатива, а не дополнительный этап к Dracut-генератору UKI.
 Для него оставь Dracut генератором initramfs, но переключи генератор UKI:
@@ -170,7 +234,7 @@ SecureBootCertificate=/var/lib/sbctl/keys/db/db.pem
 Новый UKI меняет измеряемую загрузочную цепочку; после переключения проверь
 Secure Boot и автоматическую TPM2-разблокировку до удаления fallback-образов.
 
-## 5. Обслуживание системы
+## Обслуживание: пересборка UKI
 
 После изменения конфигурации пересобирай UKI через `kernel-install`, чтобы
 выполнились все плагины установки, включая копирование и проверку подписи:
@@ -180,6 +244,8 @@ KERNEL_VERSION="$(uname -r)"
 doas kernel-install add "$KERNEL_VERSION" \
   "/usr/lib/modules/$KERNEL_VERSION/vmlinuz"
 ```
+
+## Verification
 
 До перезагрузки проверь выбранный образ:
 
@@ -197,9 +263,16 @@ cat /proc/cmdline
 cat /sys/kernel/security/lsm
 ```
 
+## Rollback / Fallback
+
 Если новый UKI не загружается или TPM2 не разблокирует LUKS автоматически,
-выбери в systemd-boot сохранённый подписанный fallback-UKI и восстанови
-рабочую конфигурацию перед новой пересборкой.
+выбери в меню systemd-boot сохранённый подписанный fallback-UKI и восстанови
+рабочую конфигурацию перед новой пересборкой. Fallback-образы не удаляй, пока
+новая цепочка не проверена.
+
+Диагностика сломавшейся TPM2-разблокировки (PCR-mismatch, перезачисление
+токена) — в [troubleshooting: TPM2-анлок после пересборки
+UKI](../troubleshooting/luks-tpm2-unlock-after-uki-rebuild.md).
 
 ## Источники
 

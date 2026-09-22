@@ -36,7 +36,7 @@ verified_on: [asus-b5402]
 
 Контекст: подробности загрузочного стека — [installation/systemd-uki-setup](../../../installation/systemd-uki-setup.md) и [installation/secure-boot-tpm](../../../installation/secure-boot-tpm.md). Btrfs-соглашения — [filesystem/btrfs-setup](../../../filesystem/btrfs-setup.md).
 
-## Target design
+## 1. Target design
 
 Всё в этом разделе описывает состояние **после применения плана**, а не
 текущую машину (текущее состояние — в Status выше).

@@ -8,9 +8,38 @@ verified_on: [asus-b5402]
 
 # Базовая настройка системы (Base System)
 
-Пример конфигурации Gentoo с LLVM/LTO, LLD и ccache. Значения нужно подобрать
-под процессор и доступную память. Параметры ASUS B5402 записаны в
+## Goal / Result
+
+Пример базовой Portage-конфигурации Gentoo:
+
+- тулчейн LLVM/Clang/LLD;
+- `-O2` + ThinLTO как optimization baseline;
+- явный CPU target (`-march=<microarchitecture>`);
+- ccache для повторных сборок;
+- USE-policy в сторону Wayland, systemd и security (tpm, secureboot,
+  apparmor, hardened).
+
+Вторая часть базовой системы — повышение привилегий: вместо громоздкого
+sudo используется легковесный doas.
+
+Конфигурация проверена на эталонной машине ASUS B5402; её фактическое
+состояние записано в
 [системном разделе](../systems/asus-b5402/system/boot-and-portage.md).
+
+## Prerequisites / Before you copy
+
+Конфигурация ниже — проверенный пример с ASUS B5402 (Alder Lake, LLVM 22),
+а не универсальный baseline. Перед копированием обязательно адаптируйте под
+своё железо и набор ПО:
+
+- `-march=alderlake` — микроархитектура вашего процессора;
+- `CPU_FLAGS_X86` — набор инструкций вашего CPU;
+- `MAKEOPTS="-j14 -l10"` — число ядер и объём памяти;
+- `LLVM_SLOT="22"` и путь `/usr/lib/llvm/22/bin/clang` в `RUSTFLAGS` —
+  фактически установленный слот LLVM;
+- `SECUREBOOT_SIGN_KEY` / `SECUREBOOT_SIGN_CERT` — пути ваших ключей sbctl;
+- отдельные USE-флаги и `VIDEO_CARDS="intel zink"` — ваше железо, GPU и
+  задачи системы.
 
 ## 1. Настройка тулчейна (`/etc/portage/make.conf`)
 
@@ -95,17 +124,17 @@ SECUREBOOT_SIGN_CERT="/var/lib/sbctl/keys/db/db.pem"
 > хуже подходит как документированная reproducible policy. Пример ASUS
 > использует `-march=alderlake`.
 
-> **Примечание**: ранее в качестве глобального линкера использовался `mold`. Сейчас системная сборка идёт через `lld`; `mold` остаётся в качестве линкера для Rust-флагов в `env/p-cores`.
+> **Примечание**: при нескольких слотах LLVM линкер для Rust фиксируют
+> абсолютным путём (`-C linker=/usr/lib/llvm/22/bin/clang`), чтобы сборка не
+> зависела от того, какой слот оказывается первым в `PATH`.
 
-> **Примечание**: `GOFLAGS="-buildmode=pie"` в `make.conf` не нужен: ebuild'ы Go собираются с `GOFLAGS` из `go-env.eclass`, который на amd64 уже включает `-buildmode=pie`.
-
-> **Примечание**: вики Gentoo не рекомендует включать ccache глобально: кэш насыщается, и доля попаданий падает; для отдельных пакетов его включают через `/etc/portage/package.env`.
-
-> **Примечание**: при нескольких слотах LLVM линкер для Rust фиксируют абсолютным путём (`-C linker=/usr/lib/llvm/22/bin/clang`), чтобы сборка не зависела от того, какой слот оказывается первым в `PATH`.
+> **Примечание**: вики Gentoo не рекомендует включать ccache глобально: кэш
+> насыщается, и доля попаданий падает; для отдельных пакетов его включают
+> через `/etc/portage/package.env`.
 
 ## 2. Повышение привилегий (doas)
 
-Вместо громоздкого sudo используется легковесный doas.
+Doas — отдельная часть базовой системы, к toolchain отношения не имеет.
 
 Файл: `/etc/doas.conf`
 
@@ -119,3 +148,26 @@ permit keepenv <username>
 # Разрешить выполнение snapper без ввода пароля (для снапшотов)
 permit persist :wheel as root cmd snapper
 ```
+
+Это общий пример, а не фактическая policy конкретной машины: систему
+привилегий эталонного ASUS B5402 описывает
+[systems/asus-b5402/security/doas.md](../systems/asus-b5402/security/doas.md).
+
+## Verification
+
+Итоговую конфигурацию, которую видит Portage, сверяют read-only запросом
+(система при этом не меняется):
+
+```bash
+portageq envvar CFLAGS CXXFLAGS
+portageq envvar USE VIDEO_CARDS MAKEOPTS
+```
+
+## History
+
+- Ранее в качестве глобального линкера использовался `mold`. Сейчас системная
+  сборка идёт через `lld`; `mold` остаётся в качестве линкера для Rust-флагов
+  в `env/p-cores`.
+- Раньше в `make.conf` задавался `GOFLAGS="-buildmode=pie"`. Он не нужен:
+  ebuild'ы Go собираются с `GOFLAGS` из `go-env.eclass`, который на amd64 уже
+  включает `-buildmode=pie`.
