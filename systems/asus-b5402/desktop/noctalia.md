@@ -2,7 +2,7 @@
 kind: system
 scope: system
 status: current
-last_verified: 2026-09-15
+last_verified: 2026-09-22
 verified_on: [asus-b5402]
 ---
 
@@ -14,27 +14,22 @@ verified_on: [asus-b5402]
 
 ## Подтверждённое состояние
 
-- Установлен пакет `gui-apps/noctalia-5.0.1` из репозитория `guru`.
+- Установлен пакет `gui-apps/noctalia-5.1.0` из репозитория
+  `noctalia-overlay` (VDB: версия, repository, USE — проверено 2026-09-22).
+- `USE=jemalloc` сохранён как осознанная runtime memory-allocation policy
+  для long-running shell.
 - Прежний локальный overlay `/var/db/repos/noctalia-local` и его запись в
   `/etc/portage/repos.conf/` удалены.
 - Конфигурация хранится в `~/.config/noctalia/config.toml`.
 - Настройки, изменённые через GUI, сохраняются в
   `~/.local/state/noctalia/settings.toml` и имеют более высокий приоритет.
 
-## Подготовленный переход в личный оверлей
+## Переход в личный оверлей
 
 Публичный [noctalia-overlay](https://github.com/vovanbl411/noctalia-overlay)
-подключён к Portage. Проверка от 2026-09-15 показала, что следующим кандидатом
-на обновление выбран `gui-apps/noctalia-5.1.0::noctalia-overlay` вместо
-`5.0.1::guru`:
-
-```text
-[ebuild     U ~] gui-apps/noctalia-5.1.0::noctalia-overlay [5.0.1::guru] USE="jemalloc"
-```
-
-Это только результат `emerge --pretend`: обновление ещё не выполнялось. Пока
-не завершён merge, установленным пакетом остаётся `gui-apps/noctalia-5.0.1`
-из `guru`.
+подключён к Portage. Кандидат был проверен `emerge --pretend` 2026-09-15,
+затем обновление выполнено: `gui-apps/noctalia-5.1.0::noctalia-overlay`
+заменил `5.0.1::guru` с `USE="jemalloc"`.
 
 Структура, подключение и политика обновлений описаны в README
 `noctalia-overlay`. Оверлей отслеживает только стабильные релизы; будущая
@@ -63,8 +58,8 @@ cat /var/db/pkg/gui-apps/noctalia-*/repository
 Ожидаемый результат:
 
 ```text
-noctalia v5.0.1
-guru
+noctalia v5.1.0
+noctalia-overlay
 ```
 
 Проверка подтверждает версию бинарника и репозиторий установленного пакета. Она
@@ -74,4 +69,5 @@ guru
 
 Версия `5.0.1` заменила Noctalia Shell `4.7.7`. После перехода на пакет из
 GURU локальный overlay `noctalia-local` был удалён. Текущий
-`noctalia-overlay` — отдельный публичный оверлей, созданный позднее.
+`noctalia-overlay` — отдельный публичный оверлей, созданный позднее;
+`5.1.0::noctalia-overlay` заменила `5.0.1::guru` 2026-09-22.

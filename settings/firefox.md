@@ -2,7 +2,7 @@
 kind: guide
 scope: general
 status: current
-last_verified: 2026-09-13
+last_verified: 2026-09-22
 verified_on: [asus-b5402]
 ---
 
@@ -20,7 +20,7 @@ profile-sync-daemon. Действовавшие параметры ASUS B5402 з
 |---------|----------|
 | `clang` | Сборка компилятором LLVM. Флаг включён по умолчанию в ebuild'е, отдельный пин слота не нужен. |
 | `+pgo` | Profile-Guided Optimization. Сборка на основе реальных профилей использования (прирост скорости ~10%). |
-| `-jumbo-build` | Ускорение компиляции за счёт объединения исходных файлов — выключено. |
+| `jumbo-build` | Ускорение компиляции объединением исходных файлов. Актуальный Gentoo profile форсирует его для Firefox, а `USE=pgo` также требует `jumbo-build`; локальный override не нужен. |
 | `-wifi -jpegxl` | Выключены геолокация по Wi-Fi и поддержка JPEG XL. |
 | `+system-lib*` | Использование системных библиотек (jpeg, png, webp, av1) для уменьшения оверхеда. |
 
@@ -42,7 +42,7 @@ profile-sync-daemon. Действовавшие параметры ASUS B5402 з
 # /etc/portage/package.use/40-multimedia (тематический файл; подойдёт и отдельный файл firefox)
 media-libs/libpng          apng
 media-libs/libvpx          postproc
-www-client/firefox         hwaccel pulseaudio openh264 system-pipewire wasm-sandbox system-av1 system-harfbuzz system-icu system-jpeg system-libevent system-libvpx system-webp system-png -telemetry -wifi -jpegxl -jumbo-build
+www-client/firefox         hwaccel pulseaudio openh264 system-pipewire wasm-sandbox system-av1 system-harfbuzz system-icu system-jpeg system-libevent system-libvpx system-webp system-png -telemetry -wifi -jpegxl
 ```
 
 ## 3. Безопасность

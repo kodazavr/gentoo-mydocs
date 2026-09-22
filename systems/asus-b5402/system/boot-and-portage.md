@@ -206,6 +206,72 @@ sys-firmware/intel-microcode  dist-kernel initramfs split-ucode hostonly -vanill
 - **OpenVPN**: `net-vpn/openvpn -dco` — out-of-tree `ovpn-dco` kernel
   module не вводится без отдельного обоснования/теста.
 
+Продолжение review (desktop и прикладной стек):
+
+**Desktop / document stack**
+
+- `app-text/poppler cairo` — Cairo/GLib backend включён; устранена
+  бессмысленная комбинация `introspection -cairo`.
+- `dev-java/openjdk-bin -source` — runtime/JDK сохраняется, установка
+  исходников не нужна.
+- `media-gfx/imagemagick lcms tiff` — ICC color-management и TIFF support
+  входят в capability универсального image tool.
+
+**Multimedia**
+
+- `media-libs/gst-plugins-base orc`, `gst-plugins-good orc`,
+  `gst-plugins-bad orc` — единая ORC/JIT policy для основного GStreamer
+  stack.
+- `media-video/ffmpeg pulseaudio` — libpulse backend поверх PipeWire
+  compatibility layer.
+- `app-emulation/spice opus` — Opus audio support.
+- `media-libs/libheif -kvazaar` — HEVC encoding остаётся на x265; второй
+  encoder не нужен.
+
+**Firmware / platform**
+
+- `sys-apps/fwupd uefi gnutls` — UEFI capsule/update functionality для
+  ноутбука; `gnutls` требуется этой конфигурацией.
+
+**Secrets / TPM**
+
+- `app-crypt/libsecret -pam -tpm` — TPM integration libsecret не
+  используется, что согласуется с TPM policy выше (TPM — только
+  LUKS2/`systemd-cryptenroll`); PAM integration остаётся через
+  `gnome-base/gnome-keyring[pam]`.
+
+**Qt / desktop performance**
+
+- `dev-qt/qtdeclarative jit` — QML JIT runtime path остаётся доступным
+  для Qt Quick/QML consumers.
+- `dev-qt/qtbase io-uring` — включён io_uring backend Qt; осознанный
+  performance/capability choice, а не утверждение о гарантированном
+  ускорении.
+- `media-gfx/qimgv video exif` — video/animated media через libmpv и EXIF
+  metadata support.
+- `gui-apps/noctalia jemalloc` — jemalloc сохранён как выбранная runtime
+  memory-allocation policy для long-running shell (состояние — в
+  [системном desktop-разделе](../desktop/noctalia.md)).
+
+**Network analysis**
+
+- `net-analyzer/wireshark http2 http3 sshdump` — полноценная современная
+  HTTP/2 и HTTP/3 support; remote capture через SSH.
+
+**Firefox cleanup**
+
+- Локальный `www-client/firefox -jumbo-build` удалён и не заменён явным
+  `jumbo-build`: актуальный Gentoo profile форсирует `jumbo-build` для
+  Firefox, а `USE=pgo` также его требует. Отрицательный локальный override
+  стал no-op и больше не является policy — `jumbo-build` наследуется от
+  профиля.
+
+Мелкие подтверждённые решения: `app-misc/fastfetch drm pulseaudio`,
+`dev-lang/ruby gmp`.
+
+**USE-policy review 2026-09-22 — COMPLETE.** Закрыт частичный policy-review;
+он не заменяет полный аудит `/etc/portage` от 2026-09-14.
+
 ## Общие руководства
 
 - [Базовая система](../../../installation/base-system.md)
