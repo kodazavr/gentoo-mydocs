@@ -8,11 +8,40 @@ verified_on: [asus-b5402]
 
 # Обновление BIOS/UEFI на ASUS ExpertBook B5402CBA
 
-Проверенная последовательность обновления BIOS с версии `313` до `314` через
-ASUS Firmware Update/EZ Flash. На системе используются Secure Boot с ключами
+## Current result
+
+Обновление BIOS с версии `313` до `314` через ASUS Firmware Update/EZ Flash
+выполнено успешно (2026-09-09). На системе используются Secure Boot с ключами
 `sbctl`, LUKS2 и автоматическая разблокировка через TPM2.
 
-## 1. Проверка образа
+- BIOS: `B5402CBA.314`, дата образа из DMI — `06/02/2026`.
+- Secure Boot: восстановлен и включён после обновления, Setup Mode отключён.
+- TPM2/LUKS auto-unlock: работает после обновления — корневой LUKS-раздел
+  разблокировался автоматически (`/dev/tpmrm0`).
+- Ошибочных systemd-юнитов нет.
+
+Важный нюанс этой машины: при включённом Secure Boot с пользовательскими
+ключами `sbctl` ASUS Firmware Update отклонял официальный образ — контрольная
+сумма, модель и версия файла были правильными. Обновление сработало только
+после временного отключения Secure Boot (см. [Firmware update](#firmware-update)).
+Это наблюдение конкретной машины, а не универсальное свойство прошивки ASUS.
+
+## Prerequisites
+
+Перед изменением Secure Boot нужно проверить резервный способ разблокировки
+корневого LUKS-раздела:
+
+```bash
+doas cryptsetup open --test-passphrase /dev/nvme1n1p2
+```
+
+Команда должна завершиться с кодом `0`. Пароль или recovery key нельзя
+сохранять в репозитории.
+
+Ноутбук должен быть подключён к блоку питания. ASUS требует не менее 20%
+заряда батареи; перед этим обновлением было 80%.
+
+## Image verification
 
 Скачивать нужно вариант **BIOS for ASUS EZ Flash Utility** для модели
 `B5402CBA`, а не Windows installer.
@@ -34,22 +63,7 @@ bfb12fb5b44a5f2d4b0a47be221802a66e50536bbf43850c20a9541a4d79c48d
 В архиве должен находиться один файл `B5402CBAAS.314`. Его внутренний
 идентификатор модели — `B5402CBA`.
 
-## 2. Подготовка LUKS и питания
-
-Перед изменением Secure Boot нужно проверить резервный способ разблокировки
-корневого LUKS-раздела:
-
-```bash
-doas cryptsetup open --test-passphrase /dev/nvme1n1p2
-```
-
-Команда должна завершиться с кодом `0`. Пароль или recovery key нельзя
-сохранять в репозитории.
-
-Ноутбук должен быть подключён к блоку питания. ASUS требует не менее 20%
-заряда батареи; перед этим обновлением было 80%.
-
-## 3. Подготовка флешки с Ventoy
+## USB preparation
 
 На использованной флешке были три раздела:
 
@@ -64,7 +78,8 @@ FAT32-раздел:
 lsblk -o NAME,SIZE,FSTYPE,LABEL,MOUNTPOINTS,RO,RM
 ```
 
-В проверенном обновлении это был `/dev/sda3`:
+В проверенном обновлении это был `/dev/sda3` — в другой сессии имя может
+отличаться, ориентируйся на `lsblk`:
 
 ```bash
 doas mkdir -p /mnt/bios-usb
@@ -99,7 +114,7 @@ doas umount /mnt/bios-usb
 fba0d81fe3fd1739bddf798f2acc1c5704be56c180830fbc65ffd899f079f4c7
 ```
 
-## 4. Ошибка проверки BIOS
+## Firmware update
 
 При включённом Secure Boot ASUS Firmware Update отклонял официальный образ с
 сообщением, что выбранный файл не подходит для обновления BIOS. Контрольная
@@ -119,7 +134,7 @@ fba0d81fe3fd1739bddf798f2acc1c5704be56c180830fbc65ffd899f079f4c7
    перезагрузки.
 7. После обновления снова включить Secure Boot и загрузить систему.
 
-## 5. Проверка после обновления
+## Post-update verification
 
 ```bash
 cat /sys/class/dmi/id/bios_version
@@ -138,14 +153,15 @@ systemctl --failed
 - корневой LUKS-раздел автоматически разблокировался через TPM2;
 - ошибочных systemd-юнитов нет.
 
+## Recovery notes
+
 Если TPM2-разблокировка не сработает, нужно использовать заранее проверенный
 пароль LUKS. Если после включения Secure Boot прошивка отклонит подписанный UKI,
 следует временно отключить Secure Boot, загрузить систему и проверить ключи и
 подписи через `sbctl`. TPM и ключевые базы UEFI очищать нельзя.
 
-## Источники
+## Sources
 
 - [BIOS для ASUS ExpertBook B5402CBA](https://www.asus.com/us/supportonly/b5402cba/helpdesk_bios/)
 - [Обновление BIOS через ASUS Firmware Update/EZ Flash](https://www.asus.com/support/faq/1008859/)
 - [systemd-cryptenroll](https://www.freedesktop.org/software/systemd/man/latest/systemd-cryptenroll.html)
-
