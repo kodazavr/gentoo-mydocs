@@ -12,9 +12,28 @@ verified_on: [asus-b5402]
 ASUS ExpertBook B5402 с LLVM 22 на LLVM 23 и связанное исследование
 optimization policy.
 
-Материал здесь не является подтверждённым состоянием системы и не заменяет
-`systems/asus-b5402/`. После завершения отдельных этапов подтверждённые
-результаты должны быть перенесены в системную документацию или общие guides.
+## Текущий статус эксперимента
+
+| Часть | Статус | Результат / следующий шаг |
+|-------|--------|---------------------------|
+| Experiment A | **COMPLETE** | A1–A4 — PASS; совместимость подтверждена только для протестированных классов |
+| Experiment B | **COMPLETE** | B1–B4 — COMPLETE; принято `global -O2 + selective benchmark-proven -O3` |
+| Optimization policy | **APPLIED** | Применена 2026-09-20 |
+| Полный `@world` rebuild под `-O2` | **COMPLETE** | Завершён 2026-09-21; post-rebuild boot/runtime проверены |
+| Limited `env/llvm-23` pilot | **NOT STARTED** | Следующий отдельный этап после resolver-аудита |
+| Experiment C (`compiler-rt + libunwind`) | **NOT STARTED** | Отдельный эксперимент; `libc++` в него не входит |
+
+Experiment A проверял compatibility, но не сравнивал performance LLVM 22 и
+LLVM 23. Этот вопрос остаётся открытым.
+
+## Граница source of truth
+
+`experiments/` хранит research record, hypotheses, gates и measurements. Это
+не подтверждённое текущее состояние машины. Current source of truth для
+системы находится в `systems/asus-b5402/`, прежде всего в
+[описании загрузки и Portage](../../systems/asus-b5402/system/boot-and-portage.md).
+После завершения отдельных этапов подтверждённые результаты должны быть
+перенесены в системную документацию или общие guides.
 
 ## Документы
 
@@ -26,7 +45,9 @@ optimization policy.
   измерений и интерпретационная рамка для всех B-гейтов;
 - [Бенчмарки -O2/-O3](o2-o3-benchmarks.md) — данные и результаты B1–B4;
 - [Журнал результатов](results.md) — записи по гейтам, итоги Experiment A и
-  B, optimization policy decision.
+  B, optimization policy decision;
+- [Исходный prompt для агента](agent-prompt.md) — historical orchestration
+  prompt, а не актуальная инструкция выполнения Experiment A или B.
 
 ## Цели
 
@@ -173,6 +194,8 @@ policy допускает. Selective `-O3` rules по итогам B1–B4 не 
 
 ## Дорожная карта
 
+### Completed
+
 ```text
 Experiment A — LLVM 23 compatibility — COMPLETE
           ↓
@@ -187,9 +210,17 @@ Experiment B — -O2 vs -O3 — COMPLETE
 применение -O2 в /etc/portage — COMPLETE (2026-09-20)
           ↓
 полный O2 rebuild + валидация — COMPLETE (2026-09-21)
-          ↓
+```
+
+### Open / next
+
+```text
 limited env/llvm-23 pilot —
 NOT STARTED
+          ↓
+controlled LLVM 23 rollout — после отдельного решения и resolver-аудита
+          ↓
+Experiment C (compiler-rt + libunwind) — NOT STARTED
 ```
 
 Блокировка `env/llvm-23` со стороны Experiment B снята: optimization policy
@@ -198,9 +229,6 @@ NOT STARTED
 
 Дальше, каждое — отдельным решением владельца:
 
-- применение принятой optimization policy в production (global `-O2`) —
-  конфигурация применена 2026-09-20, полный rebuild `@world` завершён
-  2026-09-21;
 - ограниченный `env/llvm-23` pilot; глобальный переход — только после
   resolver-аудита;
 - world rebuild по контролируемой схеме: pretend/resolver-проверка, оценка

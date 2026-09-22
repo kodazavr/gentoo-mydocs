@@ -1,4 +1,19 @@
+---
+kind: reference
+scope: system
+status: historical
+last_verified: null
+verified_on: [asus-b5402]
+---
+
 # Prompt для агента: LLVM 23 toolchain experiment
+
+> **Исторический документ:** это исходный prompt, использованный для
+> организации LLVM 23 experiment. Он сохраняется как provenance принятых
+> решений и reasoning process. Experiment A и B уже завершены; инструкции
+> «создай документы», «начни Gate A1» и другие шаги ниже не являются current
+> next steps. Актуальный статус эксперимента см. в [README.md](README.md),
+> фактические результаты — в [results.md](results.md).
 
 Работай в репозитории `vovanbl411/gentoo-mydocs`, ветка
 `docs/llvm23-toolchain-experiment`.
@@ -15,6 +30,9 @@
 
 Эталонная машина — ASUS ExpertBook B5402, Intel Core i7-1260P, Gentoo hardened
 systemd profile.
+
+> **Historical baseline:** значения ниже были зафиксированы перед экспериментом
+> и не описывают current system state сегодня.
 
 Живой baseline перед экспериментом:
 
@@ -60,6 +78,10 @@ LLD 23.1.1 установлен
 --unwindlib=libgcc
 ```
 
+Следующий `package.env` snapshot также относится к моменту подготовки
+эксперимента. Слово «сейчас» в исходном prompt означает момент той фиксации, а
+не current Portage state.
+
 Аудит `package.env` показал 111 правил, связанных с
 `gcc-fallback|problem-llvm|llvm-22|no-lto-llvm`, но это НЕ означает
 111 несовместимых с LLVM пакетов.
@@ -86,6 +108,9 @@ media-libs/libjxl
 
 Нужно отдельно проверить четыре независимых гипотезы:
 
+> Это исходный набор гипотез. Впоследствии Experiment A и B были завершены, а
+> Experiment C остаётся NOT STARTED. Гипотезы ниже не переписаны задним числом.
+
 1. **LLVM 23 migration**  
    Насколько безопасно перевести основной compiler/linker stack с
    Clang/LLD 22 на Clang/LLD 23, сохранив GNU C++/runtime stack.
@@ -103,6 +128,9 @@ media-libs/libjxl
    повышенным ABI-риском. Не включать в первые фазы.
 
 ## Сначала задокументируй наш разбор
+
+Ниже сохранены исходные инструкции по документации. Они уже выполнены, но
+объясняют provenance и структуру созданных документов.
 
 До первого изменения живой системы создай в
 `experiments/llvm23-toolchain/` следующие документы.
@@ -219,6 +247,9 @@ LLVM 23 + -O3 + ThinLTO
 
 ## Эксперимент A — LLVM 22 vs LLVM 23
 
+Далее сохранён исходный план Experiment A. Фактические результаты находятся в
+[results.md](results.md); Experiment A имеет статус COMPLETE.
+
 ### Gate A0 — baseline
 
 Baseline уже снят и приведён выше. Проверь документацию против фактического
@@ -323,7 +354,16 @@ LLVM 23 + -O3 + ThinLTO
 
 Решение принимать по измерениям, а не по теории.
 
+Последующие материалы Experiment B:
+
+- [Гипотеза и decision record](optimization-o2-o3.md);
+- [Методика benchmark](benchmark-methodology.md);
+- [Данные B1–B4](o2-o3-benchmarks.md).
+
 ## Эксперимент C — runtimes
+
+По текущему README Experiment C имеет статус NOT STARTED. Ниже сохранён его
+исходный план; новый план в этом документе не создаётся.
 
 Только после A и B отдельно исследовать:
 
@@ -345,3 +385,10 @@ libgcc_s -> libunwind
 - нужен ли `compiler-rt + libunwind`;
 - какие пакеты объективно требуют GCC/LLVM22/no-LTO;
 - какие исключения оказались историческими и могут быть удалены.
+
+## Related records
+
+- [README.md](README.md) — current experiment status;
+- [results.md](results.md) — gate journal и фактические результаты;
+- [optimization-o2-o3.md](optimization-o2-o3.md) — decision record;
+- [o2-o3-benchmarks.md](o2-o3-benchmarks.md) — benchmark data.
