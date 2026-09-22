@@ -13,24 +13,36 @@ verified_on: [asus-b5402]
 основаны на ASUS ExpertBook B5402, но фактическое состояние этой машины не
 должно подменять общую инструкцию.
 
-## Как устроена документация
+## Что здесь собрано
 
-- [Политика документации](DOCUMENTATION_POLICY.md) разделяет общие
-  руководства, состояние эталонной системы, troubleshooting и историю.
-- [Правила участия](CONTRIBUTING.md) содержат шаблон метаинформации и порядок
-  проверки изменений.
-- [Инвентаризация](DOCUMENTATION_INVENTORY.md) фиксирует исходную
-  классификацию и результат миграции.
-- [ASUS ExpertBook B5402](systems/asus-b5402/README.md) — эталонная система,
-  на которой проверяются общие инструкции.
+Опыт эксплуатации одной Gentoo-системы, оформленный как повторяемые
+руководства:
 
-## Основные темы
-
-- Wayland-окружение на Niri;
-- установка Gentoo и управление Portage;
-- Btrfs, Snapper, UKI, Secure Boot и TPM2;
-- системная и прикладная безопасность;
+- systemd и hardened-профиль, Portage на LLVM toolchain (Clang/LLD, ThinLTO);
+- Wayland-окружение на Niri с оболочкой Noctalia;
+- Btrfs со снапшотами Snapper, загрузка через systemd-boot + UKI (Dracut);
+- безопасность: Secure Boot, TPM 2.0, LUKS2, AppArmor, auditd, USBGuard, doas;
 - диагностика аппаратного и программного стека.
+
+## С чего начать
+
+- [Поставить и настроить базовую систему](installation/base-system.md) —
+  toolchain, USE-флаги, ccache, lld.
+- [Посмотреть реальную конфигурацию ноутбука](systems/asus-b5402/README.md) —
+  записанное состояние эталонной машины.
+- [Настроить рабочий стол](desktop/niri.md) — Niri, Noctalia, порталы,
+  приложения по умолчанию.
+- [Разобраться с загрузкой и защитой](installation/systemd-uki-setup.md) —
+  UKI через Dracut, [Secure Boot и TPM2](installation/secure-boot-tpm.md).
+- [Найти решение проблемы](troubleshooting/) — повторяемые разборы конкретных
+  симптомов.
+
+## Эталонная система
+
+ASUS ExpertBook B5402CBA (Intel Core i7-1260P, Alder Lake) — основная машина,
+на которой проверяются руководства. Её текущее состояние записано в
+[systems/asus-b5402/](systems/asus-b5402/README.md): Niri + Noctalia,
+Clang/LLD, systemd-boot + UKI, Btrfs + Snapper, Secure Boot + TPM2.
 
 ## Визуальный обзор
 
@@ -38,13 +50,7 @@ verified_on: [asus-b5402]
 |------------|--------|--------|
 | ![Desktop](screenshots/Screenshot%20from%202026-04-10%2015-31-19.png) | ![Shell](screenshots/Screenshot%20from%202026-04-10%2015-31-37.png) | ![Status](screenshots/Screenshot%20from%202026-04-10%2016-09-05.png) |
 
-## Структура документации
-
-### 🧭 Эталонная система
-
-| Раздел | Описание |
-|--------|----------|
-| [systems/asus-b5402](systems/asus-b5402/README.md) | Записанное состояние ASUS ExpertBook B5402, даты проверки и ссылки на общие руководства |
+## Документация
 
 ### 🚀 Установка и загрузка
 
@@ -113,33 +119,37 @@ verified_on: [asus-b5402]
 | [settings/flatpak](settings/flatpak.md) | Flatpak и Flatseal для изоляции приложений |
 | [settings/connect-phone-android](settings/connect-phone-android.md) | Проблема с подключением телефона для передачи данных |
 
-### 🔍 Решение проблем и аудит
+### 🔍 Решение проблем
 
 | Раздел | Описание |
 |--------|----------|
 | [troubleshooting/docker-29-iptables-missing](troubleshooting/docker-29-iptables-missing.md) | Docker 29 не запускается из-за отсутствия команды `iptables` |
-| [troubleshooting/docker-libvirt-nftables](troubleshooting/docker-libvirt-nftables.md) | Решение конфликта Docker и Libvirt в nftables; применено и проверено на эталонной системе 2026-09-22 |
+| [troubleshooting/docker-libvirt-nftables](troubleshooting/docker-libvirt-nftables.md) | Решение конфликта Docker и Libvirt в nftables |
 | [troubleshooting/networkmanager-iwd-mac-randomization](troubleshooting/networkmanager-iwd-mac-randomization.md) | MAC-рандомизация с NetworkManager и iwd |
 | [troubleshooting/luks-tpm2-unlock-after-uki-rebuild](troubleshooting/luks-tpm2-unlock-after-uki-rebuild.md) | TPM2-авторазблокировка LUKS ломается после смены cmdline/пересборки UKI |
 
-### ⚙️ Управление конфигурацией
+## ⚙️ Управление конфигурацией
 
-Конфигурационные файлы управляются через `chezmoi`.
-**Первичная настройка:**
+Конфигурационные файлы управляются через `chezmoi`
+([vovanbl411/dotfiles](https://github.com/vovanbl411/dotfiles)):
 
 ```bash
 emerge -av app-admin/chezmoi
+chezmoi init --apply https://github.com/vovanbl411/dotfiles
 ```
 
-`chezmoi init --apply` [https://github.com/vovanbl411/dotfiles](https://github.com/vovanbl411/dotfiles)
+## О репозитории
 
+- [Политика документации](DOCUMENTATION_POLICY.md) разделяет общие
+  руководства, состояние эталонной системы, troubleshooting и историю.
+- [Правила участия](CONTRIBUTING.md) содержат шаблон метаинформации и порядок
+  проверки изменений.
+- [Инвентаризация](DOCUMENTATION_INVENTORY.md) фиксирует исходную
+  классификацию и результат миграции.
+- Записи с `last_verified: null` нельзя считать результатом текущего аудита.
 
-## Эталонная конфигурация
-
-Версии, выбранные пакеты, аппаратные особенности и локальные политики ASUS
-ExpertBook B5402 находятся в
-[`systems/asus-b5402/`](systems/asus-b5402/README.md). Записи с
-`last_verified: null` нельзя считать результатом текущего аудита.
+*Документация поддерживается вручную и обновляется по мере изменения
+конфигурации системы.*
 
 ## Быстрые ссылки
 
@@ -149,7 +159,3 @@ ExpertBook B5402 находятся в
 - [Noctalia Shell](https://noctalia.dev/)
 - [Dracut Documentation](https://dracut-ng.github.io/dracut-ng/)
 - [BOLT Documentation](https://github.com/llvm/llvm-project/tree/main/bolt)
-
----
-
-*Документация поддерживается вручную и обновляется по мере изменения конфигурации системы.*
