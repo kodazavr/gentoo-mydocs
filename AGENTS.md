@@ -30,7 +30,8 @@
 - **Hardened/systemd** — профиль `default/linux/amd64/23.0/no-multilib/hardened/systemd`.
 - **Безопасность** — Secure Boot + TPM 2.0 + LUKS2 + AppArmor + Auditd + USBGuard + doas.
 - **Btrfs + Snapper** — flat layout субволюмов.
-- **systemd-boot + UKI** — через Dracut + ukify.
+- **systemd-boot + UKI** — генератор — Dracut (`uki_generator=dracut`);
+  `ukify` в production path не используется.
 
 ---
 

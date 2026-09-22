@@ -13,9 +13,8 @@ verified_on: [asus-b5402]
 компонент не установлен или не настроен.
 
 Частичная сверка с системой проведена 2026-09-22 (даты — в `last_verified`
-отдельных документов); из открытых пунктов — runtime-проверка polkit-агента
-после следующего перелогина ([environment.md](desktop/environment.md)). Дату
-`last_verified` следует заполнять только после новой фактической проверки.
+отдельных документов). Дату `last_verified` следует заполнять только после
+новой фактической проверки.
 
 ## Рабочее окружение
 
@@ -29,8 +28,8 @@ verified_on: [asus-b5402]
 - [ASUS ExpertBook B5402CBA](hardware/asus-expertbook.md)
 - [Intel Alder Lake i7-1260P](hardware/cpu-optimization.md)
 - [Intel Graphics](hardware/graphics.md)
-- [Второй NVMe и резервные копии](hardware/second-disk.md) — непроверенный
-  системный план.
+- [Второй NVMe и резервные копии](hardware/second-disk.md) — исходное
+  состояние диска проверено 2026-09-22; план применения не выполнен.
 
 ## Система
 

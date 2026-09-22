@@ -2,14 +2,16 @@
 kind: system
 scope: system
 status: draft
-last_verified: null
+last_verified: 2026-09-22
 verified_on: [asus-b5402]
 ---
 
 # Загрузка и Portage на ASUS ExpertBook B5402
 
-Раздел загрузки подтверждён аудитом 2026-09-10. Раздел Package policy ниже
-сохраняет исходную запись и требует отдельной проверки.
+Разделы сверяются с живой системой поэтапно, даты — в самих разделах:
+загрузочная цепочка (Secure Boot, TPM2) — 2026-09-10, Toolchain и
+package.env — 2026-09-20…21, Package policy — 2026-09-12 (savedconfig и
+USE-policy review — 2026-09-22), текущее ядро и UKI-генератор — 2026-09-22.
 
 ## Toolchain
 
@@ -101,11 +103,21 @@ Clang.
 ## Загрузка
 
 - Ядро собирается пакетом `sys-kernel/gentoo-kernel` с `savedconfig`.
+- Текущее ядро (2026-09-22) — `7.2.7-bdsm`: установлены
+  `sys-kernel/gentoo-kernel-7.2.7` и `-7.2.6`, `installkernel-68-r1`;
+  обновление до 7.2.7 выполнено 2026-09-22, система загрузилась штатно — это
+  подтверждение загрузки, а не regression-тест всех подсистем.
 - `kernel-install` использует `layout=uki`, `initrd_generator=dracut` и
-  `uki_generator=dracut`. Dracut создаёт UKI, а systemd-boot загружает его с
-  ESP.
+  `uki_generator=dracut` (`/etc/kernel/install.conf`, проверено 2026-09-22):
+  production-генератор UKI — Dracut, он создаёт UKI, а systemd-boot
+  загружает его с ESP. `ukify` — только USE-capability
+  `sys-kernel/installkernel` (см. package policy ниже), в generation path не
+  входит.
 - Dracut подписывает UKI ключами sbctl; после установки плагин sbctl проверяет
   подпись итогового EFI-файла.
+- `bootctl list` (2026-09-22): текущая загрузка — `gentoo-7.2.7-bdsm.efi`
+  (selected); в ESP также `gentoo-7.2.6-bdsm.efi`, `gentoo-7.2.2-bdsm.efi` и
+  Arch UKI (`arch-linux-cachyos.efi` — default, `arch-linux.efi`).
 - Корневой LUKS открывается через TPM2; корень — Btrfs-субволюм `@`.
 - После пересборки UKI 2026-09-10 Secure Boot и автоматическая TPM2-
   разблокировка проверены успешной перезагрузкой.
@@ -130,9 +142,9 @@ sys-firmware/intel-microcode  dist-kernel initramfs split-ucode hostonly -vanill
 - Прежний флаг `-generic` у gentoo-kernel устарел: в текущих ebuild его
   нет (схема сменилась на `generic-uki`), из живой конфигурации он убран.
 - `savedconfig` ядра хранится в `/etc/portage/savedconfig/sys-kernel/`
-  (проверено 2026-09-22): базовый файл `gentoo-kernel` и текущий версионный
-  `gentoo-kernel-7.2.6` (приоритет PF > PN по правилу eclass); версионные
-  файлы старых ядер удалены, файлов `*.bak` нет.
+  (проверено 2026-09-22): rolling-файл `gentoo-kernel` и версионные
+  `gentoo-kernel-7.2.6`, `gentoo-kernel-7.2.7` (приоритет PF > PN по правилу
+  eclass); файлов `*.bak` нет.
 - При выключенном `savedconfig` у linux-firmware сохранённый список
   `linux-firmware-20260916` не применяется — судьба файла не решена
   (обновлён с прежнего `20260810`, проверено 2026-09-22).

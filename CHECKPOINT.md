@@ -9,10 +9,10 @@
 
 | Параметр | Значение |
 |----------|----------|
-| Дата последнего аудита | 2026-09-14 — `/etc/portage` целиком (USE, `package.use`, `package.env`/`env`, keywords, license, savedconfig); baseline системы — 2026-09-10 |
+| Дата последнего аудита | 2026-09-22 — live-system review (ядро, boot/UKI, graphics, polkit); `/etc/portage` целиком — 2026-09-14; baseline системы — 2026-09-10 |
 | Ветка | `main` |
-| Рабочее дерево | закрытие world-rebuild gate и post-rebuild фиксы 2026-09-21 — одним логическим коммитом |
-| Система | Gentoo, ядро `7.2.5-bdsm`, BIOS `B5402CBA.314`, systemd-boot + UKI, Secure Boot + TPM2 (авторазблокировка LUKS реально проверена 2026-09-14) |
+| Рабочее дерево | документационный аудит после live-system review 2026-09-22 — синхронизация служебных и системных документов |
+| Система | Gentoo, ядро `7.2.7-bdsm`, BIOS `B5402CBA.314`, systemd-boot + UKI, Secure Boot + TPM2 (авторазблокировка LUKS реально проверена 2026-09-14) |
 | Аппаратура | ASUS ExpertBook B5402, i7-1260P (Alder Lake) |
 
 ---
@@ -81,7 +81,15 @@
 - **Загрузка**: systemd-boot + UKI (генератор — Dracut, `dracut-cpio`); LSM
   через `lsm=` (без `security=apparmor`); cmdline дополнен
   `audit_backlog_limit=8192` (2026-09-14).
-- **Ядро 7.2.5 пересобрано 2026-09-14**: `RT_GROUP_SCHED_DEFAULT_DISABLED=y`
+- **Ядро**: текущее — `7.2.7-bdsm` (обновлено 2026-09-22, загрузка успешная —
+  это подтверждённая загрузка, а не regression-тест всех подсистем).
+  Установлены `gentoo-kernel-7.2.7` и `-7.2.6`, `installkernel-68-r1`;
+  UKI-генератор — Dracut (`/etc/kernel/install.conf`: `layout=uki`,
+  `initrd_generator=dracut`, `uki_generator=dracut`). Savedconfig — rolling
+  `gentoo-kernel` + версионные `7.2.6`/`7.2.7` + `linux-firmware-20260916`
+  (проверено 2026-09-22).
+- **Ядро 7.2.5 — пересборка 2026-09-14 (историческая запись)**:
+  `RT_GROUP_SCHED_DEFAULT_DISABLED=y`
   (rtkit получил realtime, RR 99), `BT_HIDP=m`, `uinput` в
   `/etc/modules-load.d/uinput.conf`. Ошибки rtkit и kauditd-overflow в
   журнале — 0; hidp/uinput ждут проверки живым BT-устройством.
@@ -95,10 +103,14 @@
   `ProtectKernelTunables` переведён в `no` — `yes` блокировал запись
   `arp_evict_nocarrier`/`ndisc_evict_nocarrier` (iwd управляет ими для
   Wi-Fi roaming); остальной hardening сохранён.
-- **Polkit agent (2026-09-21)**: дублирующий ручной запуск
-  `polkit-gnome-authentication-agent-1` убран из Niri autostart; остаётся
-  один agent на сессию через XDG autostart; runtime-проверка после нового
-  перелогина — pending.
+- **Polkit agent**: дублирующий ручной запуск
+  `polkit-gnome-authentication-agent-1` убран из Niri autostart (2026-09-21).
+  Runtime-проверка 2026-09-22 закрыта в части «ровно один агент»: в текущей
+  сессии работает один процесс; юнит
+  `app-polkit-gnome-authentication-agent-1@autostart.service` в текущей
+  user manager-сессии не существует, источник запуска процесса по имеющимся
+  данным не установлен. Подробности —
+  `systems/asus-b5402/desktop/environment.md`.
 - Firewall и AppArmor отложены отдельными решениями; живая система не
   изменяется без согласования.
 
@@ -111,8 +123,8 @@
   выйдет исправленный релиз.
 - cpptrace — prospective (Noctalia crash-handler): правила в
   `package.use/30-graphics-desktop` и `keywords/90-prospective`.
-- `savedconfig/sys-kernel/linux-firmware-20260910` оставлен владельцем
-  осознанно (USE `savedconfig` выключен).
+- `savedconfig/sys-kernel/linux-firmware-20260916` не применяется (USE
+  `savedconfig` выключен); судьба файла не решена.
 - ccache: замер hit rate — окно середина октября…начало ноября 2026
   (`--zero-stats` от 2026-09-12).
 - LLVM 23: перевод пакетов, когда ebuild'ы потребителей объявят
@@ -123,11 +135,13 @@
   `@world` завершён 2026-09-21 (boot/runtime без связанных с policy
   проблем). Порядок далее: controlled LLVM 23 rollout `env/llvm-23`
   (`experiments/llvm23-toolchain/`).
-- Backup-UKI `/boot/EFI/Linux/gentoo-7.2.5-bdsm-backup.efi` — оставить или
-  удалить, решает владелец.
-- Версионированный savedconfig `gentoo-kernel-7.2.5` удалён; конфиг живёт
-  только в rolling-файле `gentoo-kernel`. Если удаление было случайным —
-  восстановить копированием.
+- ESP на 2026-09-22 (`bootctl list`): UKI `gentoo-7.2.7-bdsm.efi` (selected),
+  `gentoo-7.2.6-bdsm.efi`, `gentoo-7.2.2-bdsm.efi` и Arch UKI
+  (`arch-linux-cachyos.efi` — default, `arch-linux.efi`); UKI 7.2.5 и его
+  backup-копия не наблюдаются — прежний пункт о судьбе backup-UKI снят.
+- Версионированные savedconfig `gentoo-kernel-7.2.6` и `gentoo-kernel-7.2.7`
+  существуют вместе с rolling-файлом `gentoo-kernel` (проверено 2026-09-22;
+  приоритет PF > PN по правилу eclass).
 - При следующем изменении cmdline: снять `tpm2_pcrread sha256:7` до/после и
   сравнить — подтвердит, что cmdline меняет PCR 7 (quirk прошивки ASUS).
 - Если после пересборки UKI/cmdline снова запрошен пароль LUKS —
@@ -167,6 +181,7 @@
 
 | Дата | Событие |
 |------|---------|
+| 2026-09-22 | Ядро обновлено до `gentoo-kernel-7.2.7` (установлены 7.2.7 и 7.2.6; runtime `7.2.7-bdsm`; загрузка успешная — без заявлений о полном regression-тесте подсистем). Savedconfig: rolling `gentoo-kernel` + версионные 7.2.6/7.2.7, `linux-firmware-20260916`. Production UKI-генератор подтверждён — Dracut (`/etc/kernel/install.conf`: `layout=uki`, `uki_generator=dracut`); `ukify` не входит в generation path. Polkit: runtime-проверка закрыта в части «ровно один агент»; ожидавшийся autostart-юнит в текущей сессии не существует, источник запуска не установлен. Документационный аудит после live-system review: AGENTS/CHECKPOINT/`systems/asus-b5402/` и корневой README синхронизированы с фактическим состоянием |
 | 2026-09-22 | Частичный USE-policy review базовых/system packages (полный аудит `/etc/portage` остаётся 2026-09-14): применены `app-alternatives/gzip` → pigz, `libpcre2 jit`, `openssl ktls` (компилирует поддержку kTLS; фактическое использование — opt-in приложения), `audit io-uring` (поддержка io_uring-правил kernel Audit), `util-linux caps -cramfs`, `pax-utils caps`, `gettext git`, `coreutils caps gmp`, глобальный `verify-provenance` (дополняет `verify-sig`). Архитектурные решения: TPM только для LUKS2 (`tpm2-tss -fapi -policy`, `tpm2-tools -fapi`, `gnupg -tpm`), `lxc landlock` (при сохранении apparmor caps seccomp), `containerd -cri`, docker/podman `-btrfs` при проверенных storage `overlay2`/`overlay` (containerd `-btrfs` — после resolver-проверки), `htop caps -filecaps` (расширенный доступ через `doas htop`), `smartmontools caps`, `chrony -phc -refclock -rtc`, `mesa -vaapi -lm-sensors` (VA-API — отдельный Intel/libva stack), clang-runtime `compiler-rt openmp sanitize` без `-default-*` (GNU runtime ABI сохранён), `openvpn -dco`. Финализация review: GStreamer `orc` (base/good/bad), ffmpeg `pulseaudio`, spice `opus`, imagemagick `lcms tiff`, libheif `-kvazaar`, poppler `cairo`, openjdk-bin `-source`, fwupd `uefi gnutls`, libsecret `-pam -tpm` (по TPM policy), `qtdeclarative jit`, `qtbase io-uring`, `qimgv video exif`, wireshark `http2 http3 sshdump`, Firefox stale `-jumbo-build` override снят (profile форсирует jumbo-build, `pgo` его требует), Noctalia 5.1.0::noctalia-overlay + `jemalloc` установлена, `firefox.md`/`noctalia.md` синхронизированы. Review — COMPLETE; не заменяет полный аудит `/etc/portage` 2026-09-14. Зафиксировано в `systems/asus-b5402/system/boot-and-portage.md` |
 | 2026-09-21 | Полный rebuild установленного `@world` после применения `-O2` + ThinLTO policy завершён успешно; система загрузилась штатно, основные сервисы работают, post-rebuild анализ журналов регрессий, связанных с policy, не выявил (не каждый файл обязан содержать ThinLTO: ebuild'ы могут фильтровать LTO или не использовать C/C++ toolchain). Post-rebuild фиксы владельца: (1) iwd — `ProtectKernelTunables=yes` в drop-in заменён на `no`: блокировал запись `arp_evict_nocarrier`/`ndisc_evict_nocarrier` sysctl, которыми iwd управляет для Wi-Fi roaming, остальной hardening сохранён; (2) polkit — дублирующий ручной запуск `polkit-gnome-authentication-agent-1` убран из Niri autostart, остаётся XDG autostart (один agent на сессию; runtime-проверка после нового перелогина — не выполнена). Наблюдения без исправлений: transient startup-гонка NetworkManager/iwd вокруг P2P-инициализации (`/net/connman/iwd/0`) без подтверждённого runtime-воздействия; polkit-126-r3 логирует отсутствие `/run/polkit-1/rules.d` и `/usr/local/share/polkit-1/rules.d` — benign, workaround не требуется |
 | 2026-09-21 | no-LTO exception cleanup `/etc/portage` COMPLETE: 102 локальных `no-lto-llvm` overrides сняты контролируемыми batch'ами с проверкой `emerge --buildpkgonly -1`; `env/no-lto-llvm`, `env/no-ccache`, `package.env/20-compatibility` удалены; docker-cli exception исчез вместе с этими env-файлами; mesa — только `ssd` в `10-performance`; структура: `env/` — `gcc-fallback`, `kernel-llvm`, `p-cores`, `ssd`; `package.env/` — `00-toolchain`, `10-performance`, `30-gcc-fallback`; BFD policy внутри `env/gcc-fallback`. Корректный вывод: overrides больше не нужны (ebuild `filter-lto` / Go-Rust не используют C/C++ flags напрямую), а не «102 пакета доказанно собираются с ThinLTO» |

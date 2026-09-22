@@ -9,8 +9,8 @@ verified_on: [asus-b5402]
 # Рабочее окружение ASUS ExpertBook B5402
 
 Запись перенесена из общих руководств; раздел polkit-агента проверен на
-живой системе 2026-09-21, остальное перед использованием нужно сверить с
-установленными пакетами и конфигурацией.
+живой системе 2026-09-21 и 2026-09-22, остальное перед использованием нужно
+сверить с установленными пакетами и конфигурацией.
 
 ## Записанное состояние
 
@@ -26,12 +26,13 @@ verified_on: [asus-b5402]
 
 ## Polkit authentication agent
 
-Проверено на живой системе 2026-09-21.
+Проверено на живой системе 2026-09-21 и 2026-09-22.
 
-- Agent запускается системным XDG autostart
+- Проектный путь запуска — системный XDG autostart
   (`/etc/xdg/autostart/polkit-gnome-authentication-agent-1.desktop`),
   который Niri как systemd session поднимает через
-  `xdg-desktop-autostart.target`.
+  `xdg-desktop-autostart.target`; фактический источник работающего сейчас
+  процесса по имеющимся данным не установлен (см. ниже).
 - 2026-09-21: дублирующий ручной запуск
   (`spawn-sh-at-startup "/usr/libexec/polkit-gnome-authentication-agent-1 &"`)
   закомментирован в `~/.config/niri/autostart.kdl`. Причина: upstream
@@ -43,11 +44,17 @@ verified_on: [asus-b5402]
   рабочий агент порождал не ручной spawn, а цепочка из niri: агент жил в
   cgroup `niri.service` с её `INVOCATION_ID`, после чего autostart-юнит
   падал с той же ошибкой регистрации. Этот spawn в конфиге niri
-  закомментирован владельцем 2026-09-22. В текущей сессии юнит остаётся
-  failed — исправление вступает при следующем перелогине.
-- Runtime-проверка после следующего перелогина — pending: ожидание —
-  `app-polkit-gnome-authentication-agent-1@autostart.service` в состоянии
-  active и ровно один процесс `polkit-gnome-authentication-agent-1`.
+  закомментирован владельцем 2026-09-22.
+- Runtime-проверка после перелогина (2026-09-22) закрыта в части «ровно
+  один агент»: в текущей сессии работает ровно один процесс
+  `polkit-gnome-authentication-agent-1` (`pgrep -af`), конфликта
+  дублирующего агента не наблюдается.
+- Юнит `app-polkit-gnome-authentication-agent-1@autostart.service` в
+  текущей user manager-сессии не существует (`systemctl --user status` —
+  «could not be found»), поэтому прежний критерий проверки «юнит становится
+  active» не подтверждается и каноническим больше не является. Статус
+  XDG-generated-юнита и источник запуска работающего процесса по имеющимся
+  данным не устанавливаются.
 - Наблюдение: polkitd (`sys-auth/polkit-126-r3`) при старте логирует
   отсутствие `/run/polkit-1/rules.d` и `/usr/local/share/polkit-1/rules.d`
   при полностью рабочем polkit — benign startup-сообщение; создавать пустые
