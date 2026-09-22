@@ -8,29 +8,50 @@ verified_on: []
 
 # Решение конфликта маршрутизации: Docker + Libvirt (nftables)
 
-> **Архив:** документ описывает вариант для OpenRC. Действующее руководство
-> для systemd находится в
+> **Архив:** документ относится к старому OpenRC setup. Для текущего systemd
+> flow используй действующее руководство
 > [`troubleshooting/docker-libvirt-nftables.md`](../troubleshooting/docker-libvirt-nftables.md).
+> Команды и конфигурация OpenRC ниже сохранены только как historical reference.
 
-## Описание проблемы
+## 1. Historical context и применимость
 
-При одновременном использовании Docker (через iptables-nft) и Libvirt (QEMU/KVM) на хосте с Gentoo Linux, сетевой трафик виртуальных машин блокируется. Пакеты доходят до сетевого стека хоста, но не пересылаются во внешнюю сеть, несмотря на включенный ip_forward.
+Материал описывает прежнюю конфигурацию Gentoo с OpenRC, Docker через
+iptables-nft и Libvirt QEMU/KVM. Он не конвертирован в systemd и не описывает
+current setup.
 
-### Причина (Root Cause)
+## 2. Симптом
 
-В архитектуре nftables несколько таблиц могут подписываться на один и тот же хук (hook).
- 1. Docker создает таблицу ip filter с цепочкой FORWARD, имеющей priority 0 и policy drop.
- 2. Libvirt создает свои таблицы, которые разрешают (accept) трафик.
- 3. В nftables вердикт DROP является окончательным и приоритетным. Даже если Libvirt разрешил пакет, "молчаливое" правило policy drop в таблице Docker уничтожает его на том же хуке.
+При одновременном использовании Docker через iptables-nft и Libvirt QEMU/KVM
+на хосте с Gentoo Linux сетевой трафик виртуальных машин блокировался. Пакеты
+доходили до сетевого стека хоста, но не пересылались во внешнюю сеть, несмотря
+на включённый `ip_forward`.
 
-## Архитектурное решение
+## 3. Причина
 
-Вместо изменения правил, которыми управляет демон Docker (что чревато их затиранием), мы создаем отдельную независимую таблицу gentoo_bridge_fix с отрицательным приоритетом.
-В nftables цепочки с меньшим числовым значением приоритета обрабатываются раньше. Установив приоритет -10, мы перехватываем пакеты до того, как они попадут под фильтры Docker.
+В историческом описании nftables несколько таблиц могли подписываться на один
+и тот же hook:
 
-## Реализация (/etc/nftables.conf)
+1. Docker создавал таблицу `ip filter` с цепочкой `FORWARD`, имевшей
+   priority 0 и policy drop.
+2. Libvirt создавал свои таблицы, которые разрешали (accept) трафик.
+3. В nftables вердикт DROP считался окончательным и приоритетным. Даже если
+   Libvirt разрешал пакет, «молчаливое» правило policy drop в таблице Docker
+   уничтожало его на том же hook.
 
-Добавьте следующий блок в конфигурацию вашего фаервола:
+Эти утверждения сохранены как историческое описание root cause и во время
+архивной миграции не проходили technical audit.
+
+## 4. Историческое исправление
+
+Вместо изменения правил, которыми управлял демон Docker и которые могли быть
+перезаписаны, создавалась отдельная независимая таблица
+`gentoo_bridge_fix` с отрицательным приоритетом. В nftables цепочки с меньшим
+числовым значением приоритета обрабатывались раньше. Приоритет `-10` должен
+был перехватить пакеты до фильтров Docker с priority 0.
+
+## 5. Конфигурация OpenRC
+
+Файл: `/etc/nftables.conf`
 
 ```conf
 #!/usr/bin/nft -f
@@ -44,7 +65,7 @@ table ip gentoo_bridge_fix {
         # Разрешаем трафик для подсетей k8s и Libvirt
         ip saddr 10.0.0.0/24 accept
         ip daddr 10.0.0.0/24 accept
-        
+
         # Стандартная подсеть Libvirt (default network)
         ip saddr 192.168.122.0/24 accept
         ip daddr 192.168.122.0/24 accept
@@ -55,37 +76,54 @@ table ip gentoo_bridge_fix {
 }
 ```
 
-### Почему это работает:
+Этот путь и ruleset относятся к historical OpenRC configuration. Они не
+заменены на systemd layout.
 
- * Изоляция: Мы не трогаем цепочку DOCKER-USER, оставляя её полностью под управление Docker.
- * Приоритет: Наш accept срабатывает раньше, чем Docker увидит пакет.
- * Перманентность: В Gentoo nftables подхватывает этот конфиг при старте системы через OpenRC (rc-service nftables start).
+### Почему это работало
 
-## Верификация
+1. **Изоляция:** цепочка `DOCKER-USER` оставалась полностью под управлением
+   Docker.
+2. **Приоритет:** accept срабатывал раньше, чем Docker видел пакет.
+3. **Перманентность:** в Gentoo nftables подхватывал этот конфиг при старте
+   системы через OpenRC (`rc-service nftables start`).
 
-После применения конфигурации проверьте наличие правил и прохождение пакетов:
+## 6. Верификация
 
- 1. Просмотр правил:
-  
+После применения исторической конфигурации проверялись наличие правил и
+прохождение пакетов.
+
+### Просмотр правил
+
 ```bash
-   doas nft list table ip gentoo_bridge_fix
-```   
-   
- 2. Тест связи из ВМ:
-
-```bash
-   ping -c 4 1.1.1.1
-   curl -I https://google.com
+doas nft list table ip gentoo_bridge_fix
 ```
-   
- 3. Проверка DNS:
-  
-```bash
-   dig +short gentoo.org @8.8.8.8
-```   
-   
-Заметки по системе:
 
- * Kernel: 6.x (Alder Lake optimized, Clang/LLVM + ThinLTO)
- * Firewall Backend: nftables 1.1.x
- * Infrastructure: Docker (MinIO State), Libvirt (k8s nodes)
+### Тест связи из ВМ
+
+```bash
+ping -c 4 1.1.1.1
+curl -I https://google.com
+```
+
+### Проверка DNS
+
+```bash
+dig +short gentoo.org @8.8.8.8
+```
+
+Документ не фиксирует новые результаты этих проверок.
+
+## 7. Historical environment
+
+- Kernel: 6.x (Alder Lake optimized, Clang/LLVM + ThinLTO)
+- Firewall Backend: nftables 1.1.x
+- Infrastructure: Docker (MinIO State), Libvirt (k8s nodes)
+
+Это environment прежнего OpenRC setup, а не current state системы.
+
+## 8. Related/current docs
+
+- [Docker, Libvirt и nftables](../troubleshooting/docker-libvirt-nftables.md)
+  — current systemd troubleshooting guide.
+- [Файрвол: nftables](../networking/nftables-firewall.md) — общее действующее
+  руководство по nftables.
