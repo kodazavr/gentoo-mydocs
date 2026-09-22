@@ -8,7 +8,7 @@ verified_on: [asus-b5402]
 
 # Docker 29 не запускается: `iptables not found`
 
-## Симптом
+## 1. Symptom
 
 После обновления Go и пересборки Docker системный сервис завершался с ошибкой
 `start-limit-hit`:
@@ -31,7 +31,20 @@ failed to start daemon: Error initializing network controller:
 failed to create NAT chain DOCKER: iptables not found
 ```
 
-## Причина
+Ключевая ошибка для этого документа — `iptables not found`, а
+`start-limit-hit` является вторичным symptom systemd.
+
+## 2. Когда применять
+
+Инструкция применима, если:
+
+- Docker действительно завершается с ошибкой `iptables not found`;
+- используется backend, которому нужна команда `iptables`;
+- отсутствие `iptables` подтверждено проверкой.
+
+Это не универсальная причина любого сбоя `docker.service`.
+
+## 3. Cause
 
 На момент диагностики были установлены Docker `29.8.0` и
 `net-firewall/nftables-1.1.6`, но отсутствовали пакет
@@ -53,9 +66,9 @@ backend по умолчанию. Пакет `net-firewall/nftables` предос
 мог стать ненужной зависимостью после обновления Docker и затем попасть под
 `emerge --depclean`.
 
-## Исправление
+## 4. Fix
 
-Сначала проверить план установки:
+Сначала проверь план установки:
 
 ```bash
 emerge -pv net-firewall/iptables
@@ -72,8 +85,8 @@ iptables --version
 ```
 
 > **Важно:** USE-флаг `nftables` добавляет nft-совместимую реализацию, но не
-> гарантирует, что она выбрана как активная. После новой установки ebuild может
-> назначить `xtables-legacy-multi`, поэтому переключение через `eselect`
+> гарантирует, что она выбрана как активная. После новой установки ebuild
+> может назначить `xtables-legacy-multi`, поэтому переключение через `eselect`
 > выполняется явно.
 
 Ожидаемый результат:
@@ -82,7 +95,7 @@ iptables --version
 iptables v1.8.x (nf_tables)
 ```
 
-После установки сбросить ограничение systemd и запустить сервисы:
+После установки сбрось ограничение systemd и запусти сервисы:
 
 ```bash
 doas systemctl reset-failed docker.service docker.socket
@@ -90,7 +103,7 @@ doas systemctl restart docker.socket
 doas systemctl start docker.service
 ```
 
-## Проверка
+## 5. Verification
 
 ```bash
 systemctl status docker.service --no-pager
@@ -101,7 +114,13 @@ docker ps
 Ожидается состояние `active (running)`, а `docker info` должен завершиться без
 ошибки подключения к демону Docker.
 
-## Почему не нативный nftables backend
+## 6. Rollback / recovery
+
+Если реализация backend, выбранная через `eselect`, оказалась неправильной,
+верни прежний выбор и повторно проверь запуск Docker. Удалять пакеты или
+откатывать Docker для этого шага не требуется.
+
+## 7. Alternative: нативный nftables backend
 
 Docker 29 поддерживает нативный nftables backend, но он включается только явно:
 через `"firewall-backend": "nftables"` в `/etc/docker/daemon.json`. Этот режим
@@ -114,14 +133,16 @@ forwarding были выключены, а действующая конфигу
 изменение, сохраняющее текущую сетевую схему. Активной реализацией должна быть
 `xtables-nft-multi`.
 
-## Сопутствующие сообщения
+## 8. Сопутствующие сообщения
 
 Записи `not restoring image ... layer does not exist` появляются раньше
 фатальной ошибки, но не останавливают запуск на этом этапе. После
 восстановления Docker следует отдельно проверить список образов и контейнеров.
 Не нужно удалять `/var/lib/docker` для исправления ошибки `iptables not found`.
 
-## Environment
+## 9. Historical / Incident environment
+
+Это окружение исходного инцидента, а не текущее состояние ASUS B5402:
 
 - **Дата диагностики:** 2026-09-09
 - **Docker:** 29.8.0
@@ -131,7 +152,16 @@ forwarding были выключены, а действующая конфигу
 - **Firewall:** nftables 1.1.6
 - **Init:** systemd
 
+Текущее подтверждённое состояние эталонной системы находится в
+[системном документе](../systems/asus-b5402/networking/networkmanager-and-libvirt.md).
+
+## Related docs
+
+- [Docker + Libvirt и nftables](docker-libvirt-nftables.md) — взаимодействие
+  forwarded traffic Docker, Libvirt и nftables.
+- [Сеть ASUS B5402](../systems/asus-b5402/networking/networkmanager-and-libvirt.md)
+  — текущее подтверждённое состояние эталонной системы.
+
 ## References
 
 - [Docker: Firewall with nftables](https://docs.docker.com/engine/network/firewall-nftables/)
-- [Docker + Libvirt и nftables](docker-libvirt-nftables.md)

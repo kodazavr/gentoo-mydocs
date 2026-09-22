@@ -8,32 +8,35 @@ verified_on: [asus-b5402]
 
 # Настройка MAC-рандомизации и iwd в NetworkManager (Gentoo)
 
-Конфигурация ASUS B5402 вынесена в
-[`systems/asus-b5402/networking/networkmanager-and-libvirt.md`](../systems/asus-b5402/networking/networkmanager-and-libvirt.md).
+## 1. Symptom / Goal
 
-## Содержание
-1. [Цель](#цель)
-2. [Исходная проблема](#исходная-проблема)
-3. [Пошаговое решение](#пошаговое-решение)
-4. [Проверка работы](#проверка-работы)
-5. [Теория и пояснения](#теория-и-пояснения)
-6. [Устранение неполадок](#устранение-неполадок)
+Документ относится к ситуации, когда NetworkManager использует `iwd` для
+Wi-Fi, ожидается MAC randomization, но фактическая конфигурация не даёт
+ожидаемого результата или перекрывается другим config.
 
----
+Это troubleshooting исходного инцидента и набор вариантов конфигурации, а не
+универсально рекомендуемая настройка для любого Wi-Fi-устройства.
 
-## Цель
+## 2. Когда применять и что проверить
 
-Настройка NetworkManager для:
-- Использования **iwd** вместо wpa_supplicant (быстрее переподключается, стабильнее)
-- Включения **рандомизации MAC-адреса** при сканировании сетей
-- Использования **стабильного/случайного MAC** при подключении (защита приватности)
+Перед изменениями проверь:
 
----
+- какой Wi-Fi driver используется;
+- итоговую конфигурацию NetworkManager;
+- существующие файлы в `/etc/NetworkManager/conf.d/` и системных config dirs;
+- допустим ли временный разрыв Wi-Fi при перезапуске NetworkManager.
 
-## Исходная проблема
+Фактическое текущее состояние ASUS B5402 находится в
+[системном документе](../systems/asus-b5402/networking/networkmanager-and-libvirt.md)
+и не дублируется здесь.
+
+## 3. Cause: наблюдения исходного инцидента
 
 ### Конфликт конфигураций
-Системный файл `/usr/lib/NetworkManager/conf.d/31-mac-addr-change.conf` переопределял пользовательские настройки:
+
+В исходном инциденте системный файл
+`/usr/lib/NetworkManager/conf.d/31-mac-addr-change.conf` переопределял
+пользовательские настройки:
 
 ```ini
 # Системный конфиг (защита проблемных драйверов)
@@ -41,84 +44,88 @@ wifi.scan-rand-mac-address=no
 wifi.cloned-mac-address=preserve
 ```
 
-**Проблема:** Параметры применялись ко всем устройствам, хотя предназначались только для драйверов `eagle_sdio` и `wl` (Broadcom).
+Параметры применялись ко всем устройствам, хотя предназначались только для
+драйверов `eagle_sdio` и `wl` (Broadcom). Это наблюдение исходного инцидента,
+а не универсальный факт для всех современных версий NetworkManager.
 
-### Устаревший параметр
+### Historical / legacy configuration
+
+В исходной конфигурации также встречался старый параметр:
+
 ```ini
 # НЕ ИСПОЛЬЗОВАТЬ — устаревший синтаксис
 [connection]
 wifi.mac-address-randomization=2
 ```
 
----
+## 4. Fix / Configuration
 
-## Пошаговое решение
-
-### Шаг 1: Проверка драйвера Wi-Fi
-
-**Важно:** Убедитесь, что у вас не проблемный драйвер (`eagle_sdio`, `wl`).
+### 1. Определи Wi-Fi driver
 
 ```bash
 lspci -k | grep -A3 "Network controller"
 ```
 
-**Пример вывода для поддерживаемого Intel AX201:**
-```
+Пример из исходного инцидента на ASUS B5402 с Intel AX201:
+
+```text
 00:14.3 Network controller: Intel Corporation Alder Lake-P PCH CNVi WiFi (rev 01)
     DeviceName: Onboard - Ethernet
     Subsystem: Intel Corporation Dual Band Wi-Fi 6(802.11ax) AX201 160MHz 2x2 [Harrison Peak]
     Kernel driver in use: iwlwifi
 ```
 
-**Поддерживаемые драйверы** (можно отключать 31-mac-addr-change.conf):
+В исходном документе драйверы были разделены так:
+
+**Поддерживаемые драйверы** — для них предлагалось отключать
+`31-mac-addr-change.conf`:
+
 - `iwlwifi` (Intel) — ✅ рекомендуется
 - `mt76` (MediaTek) — ✅
 - `ath10k`, `ath9k`, `ath11k` (Atheros/Qualcomm) — ✅
 - `rtl8xxxu`, `rtw88`, `rtw89` (Realtek) — ✅
 
-**Проблемные драйверы** (нужен 31-mac-addr-change.conf):
+**Проблемные драйверы** — для них сохранялся
+`31-mac-addr-change.conf`:
+
 - `wl` (Broadcom проприетарный) — ❌ не поддерживает смену MAC
 - `eagle_sdio` — ❌ редкий, встроенный
 
-### Шаг 2: Отключение конфликтующего системного конфига
+### 2. Проверь и отключи конфликтующий config
 
 ```bash
 # Создаём пустой файл-заглушку (маскируем системный)
-sudo touch /etc/NetworkManager/conf.d/31-mac-addr-change.conf
+doas touch /etc/NetworkManager/conf.d/31-mac-addr-change.conf
 
 # Или с комментарием:
-echo "# Disabled: iwlwifi supports MAC randomization" | sudo tee /etc/NetworkManager/conf.d/31-mac-addr-change.conf
+echo "# Disabled: iwlwifi supports MAC randomization" | doas tee /etc/NetworkManager/conf.d/31-mac-addr-change.conf
 ```
 
-**Почему нельзя использовать symlink на /dev/null:**
-NetworkManager проверяет `stat()` и отказывается читать не-regular файлы.
+В исходном решении symlink на `/dev/null` не использовался: NetworkManager
+проверяет `stat()` и отказывается читать не-regular файлы.
 
-### Шаг 3: Настройка iwd как backend
+### 3. Настрой iwd как backend
 
 ```bash
-sudo nano /etc/NetworkManager/conf.d/wifi-backend.conf
+doas nano /etc/NetworkManager/conf.d/wifi-backend.conf
 ```
 
 Содержимое:
+
 ```ini
 [device]
 wifi.backend=iwd
 wifi.scan-rand-mac-address=yes
 ```
 
-**Почему iwd:**
-- Быстрее переподключается к известным сетям (~1 сек vs ~5-10 сек у wpa_supplicant)
-- Лучше работает с Enterprise-сетями (WPA2-Enterprise, 802.1X)
-- Меньше потребление памяти
-- Современный кодовая база (написан на C, использует kernel API напрямую)
-
-### Шаг 4: Настройка MAC-рандомизации
+### 4. Выбери MAC policy
 
 ```bash
-sudo nano /etc/NetworkManager/conf.d/99-mac-privacy.conf
+doas nano /etc/NetworkManager/conf.d/99-mac-privacy.conf
 ```
 
-**Вариант A: Стабильный MAC (рекомендуется)**
+**Вариант A: stable**
+
 ```ini
 [device]
 wifi.scan-rand-mac-address=yes
@@ -129,7 +136,8 @@ ethernet.cloned-mac-address=stable
 connection.stable-id=${CONNECTION}/${BOOT}
 ```
 
-**Вариант B: Случайный MAC (максимальная приватность)**
+**Вариант B: random**
+
 ```ini
 [device]
 wifi.scan-rand-mac-address=yes
@@ -139,32 +147,40 @@ wifi.cloned-mac-address=random
 ethernet.cloned-mac-address=random
 ```
 
-**Вариант C: Стабильный на основе SSID (баланс)**
+**Вариант C: stable-ssid**
+
 ```ini
 [connection]
 wifi.cloned-mac-address=stable-ssid
 ```
 
-### Шаг 5: Перезапуск и проверка
+### 5. Примени конфигурацию
+
+> ⚠️ **Важный нюанс**: перезапуск NetworkManager может временно оборвать
+> текущее Wi-Fi-соединение.
 
 ```bash
-sudo systemctl restart NetworkManager
-
-# Проверка конфигурации
-NetworkManager --print-config | grep -E "wifi\."
-
-# Ожидаемый вывод:
-# wifi.backend=iwd
-# wifi.scan-rand-mac-address=yes
-# wifi.cloned-mac-address=stable
-# ethernet.cloned-mac-address=stable
+doas systemctl restart NetworkManager
 ```
 
----
+## 5. Verification
 
-## Проверка работы
+### Effective NetworkManager config
 
-### Проверка 1: Текущий MAC-адрес
+```bash
+NetworkManager --print-config | grep -E "wifi\."
+```
+
+Пример ожидаемых строк для варианта `stable`:
+
+```text
+wifi.backend=iwd
+wifi.scan-rand-mac-address=yes
+wifi.cloned-mac-address=stable
+ethernet.cloned-mac-address=stable
+```
+
+### Permanent и current MAC
 
 ```bash
 # Аппаратный (постоянный) MAC
@@ -174,8 +190,9 @@ ethtool -P wlan0
 ip link show wlan0
 ```
 
-**Пример успеха:**
-```bash
+Пример из исходного документа, а не обязательный exact output:
+
+```text
 $ ethtool -P wlan0
 Permanent address: 8c:c6:81:xx:xx:xx  # Intel OUI
 
@@ -183,7 +200,7 @@ $ ip link show wlan0
 link/ether 92:4a:xx:xx:xx:xx  # Другой MAC → рандомизация работает!
 ```
 
-### Проверка 2: Используемый backend
+### Используемый backend
 
 ```bash
 # Должно показать iwd
@@ -193,7 +210,7 @@ NetworkManager --print-config | grep backend
 nmcli -f GENERAL.DEVICE,GENERAL.TYPE,GENERAL.DRIVER device show wlan0
 ```
 
-### Проверка 3: Статус iwd
+### Статус iwd
 
 ```bash
 systemctl status iwd
@@ -202,18 +219,36 @@ systemctl status iwd
 # NetworkManager запускает его автоматически через D-Bus
 ```
 
----
+## 6. Rollback / Recovery
 
-## Теория и пояснения
+Если после изменения Wi-Fi перестал работать, верни прежние конфиги. Удали
+созданный masking file или восстанови его прежнее содержимое, верни прежние
+файлы backend и MAC policy, затем снова примени конфигурацию NetworkManager:
+
+```bash
+doas systemctl restart NetworkManager
+```
+
+После отката проверь восстановление Wi-Fi и effective NetworkManager config.
+
+## 7. Background / Reference
+
+### Почему в исходном решении выбран iwd
+
+- Быстрее переподключается к известным сетям (~1 сек vs ~5-10 сек у
+  wpa_supplicant)
+- Лучше работает с Enterprise-сетями (WPA2-Enterprise, 802.1X)
+- Меньше потребление памяти
+- Современная кодовая база (написан на C, использует kernel API напрямую)
 
 ### Уровни рандомизации MAC
 
-| Уровень | Параметр | Когда меняется | Use case |
-|---------|----------|---------------|----------|
+| Уровень | Параметр | Когда меняется | Поведение |
+|---------|----------|---------------|-----------|
 | Сканирование | `wifi.scan-rand-mac-address` | Каждое сканирование | Защита от трекинга при поиске сетей |
-| Подключение (stable) | `wifi.cloned-mac-address=stable` | При каждой загрузке для данной сети | Баланс приватности и удобства (рекомендуется) |
-| Подключение (random) | `wifi.cloned-mac-address=random` | Каждое подключение | Максимальная приватность |
-| Подключение (stable-ssid) | `wifi.cloned-mac-address=stable-ssid` | Зависит от SSID | Один MAC для дома, другой для работы |
+| Подключение (stable) | `wifi.cloned-mac-address=stable` | При каждой загрузке для данной сети | Стабильный вариант для подключения |
+| Подключение (random) | `wifi.cloned-mac-address=random` | Каждое подключение | Новый MAC при каждом подключении |
+| Подключение (stable-ssid) | `wifi.cloned-mac-address=stable-ssid` | Зависит от SSID | Отдельное значение в зависимости от SSID |
 | Подключение (preserve) | `wifi.cloned-mac-address=preserve` | Никогда | Сохраняет вручную заданный MAC |
 
 ### Порядок загрузки конфигов NetworkManager
@@ -223,9 +258,10 @@ systemctl status iwd
 3. `/etc/NetworkManager/conf.d/*.conf` (последний wins внутри группы)
 4. `/run/NetworkManager/conf.d/*.conf` (временные, highest priority)
 
-**Проблема:** `/usr/lib/NetworkManager/conf.d/` сканируется **после** `/etc/NetworkManager/conf.d/`, поэтому `31-*` перезаписывает `99-*`!
-
-**Решение:** Создать файл с тем же именем в `/etc/` — он заменит системный.
+В исходном объяснении `/usr/lib/NetworkManager/conf.d/` сканируется **после**
+`/etc/NetworkManager/conf.d/`, поэтому `31-*` перезаписывает `99-*`.
+Предложенное решение — создать файл с тем же именем в `/etc/`, чтобы он
+заменил системный.
 
 ### Устаревшие параметры
 
@@ -234,58 +270,61 @@ systemctl status iwd
 | `wifi.mac-address-randomization=0\|1\|2` | `wifi.cloned-mac-address` | 0=default, 1=never, 2=always |
 | `wifi.mac-address-randomization` в `[device]` | `wifi.scan-rand-mac-address` | Разделение сканирования и подключения |
 
----
+## 8. Additional troubleshooting
 
-## Устранение неполадок
-
-### Проблема: `Failed to read configuration: Not a regular file`
+### `Failed to read configuration: Not a regular file`
 
 **Причина:** Использован symlink на `/dev/null`.
 
 **Решение:**
+
 ```bash
-sudo rm /etc/NetworkManager/conf.d/31-mac-addr-change.conf
-sudo touch /etc/NetworkManager/conf.d/31-mac-addr-change.conf
+doas rm /etc/NetworkManager/conf.d/31-mac-addr-change.conf
+doas touch /etc/NetworkManager/conf.d/31-mac-addr-change.conf
 ```
 
-### Проблема: Wi-Fi не подключается после смены MAC
+### Wi-Fi не подключается после смены MAC
 
 **Причина:** Captive portal или MAC-фильтрация на роутере.
 
 **Решение:** Использовать `stable` вместо `random`:
+
 ```ini
 wifi.cloned-mac-address=stable
 ```
 
-### Проблема: iwd не запускается
+### iwd не запускается
 
 **Проверка:**
+
 ```bash
 # Должен быть установлен
 emerge -qv net-wireless/iwd
 
 # Не должен быть включен как сервис (NM управляет им)
-sudo systemctl disable iwd  # если был включен
+doas systemctl disable iwd  # если был включен
 ```
 
-### Проблема: Конфликт с systemd-networkd
+### Конфликт с systemd-networkd
 
 **Симптом:** Соединения в `/run/NetworkManager/system-connections/`.
 
 **Решение:** Отключить systemd-networkd для Wi-Fi:
+
 ```bash
-sudo systemctl disable systemd-networkd
+doas systemctl disable systemd-networkd
 # или
-sudo systemctl mask systemd-networkd-wait-online.service
+doas systemctl mask systemd-networkd-wait-online.service
 ```
 
----
+## 9. Example configuration from the original incident
 
-## Итоговая конфигурация
+Этот блок показывает исторический вариант конфигурации исходного инцидента.
+Он не является текущим source of truth для ASUS B5402.
 
 ### Файлы
 
-```
+```text
 /etc/NetworkManager/
 ├── NetworkManager.conf          # [main] plugins=keyfile
 ├── conf.d/
@@ -296,20 +335,23 @@ sudo systemctl mask systemd-networkd-wait-online.service
 
 ### Содержимое файлов
 
-**`/etc/NetworkManager/NetworkManager.conf`:**
+Файл: `/etc/NetworkManager/NetworkManager.conf`
+
 ```ini
 [main]
 plugins=keyfile
 ```
 
-**`/etc/NetworkManager/conf.d/wifi-backend.conf`:**
+Файл: `/etc/NetworkManager/conf.d/wifi-backend.conf`
+
 ```ini
 [device]
 wifi.backend=iwd
 wifi.scan-rand-mac-address=yes
 ```
 
-**`/etc/NetworkManager/conf.d/99-mac-privacy.conf`:**
+Файл: `/etc/NetworkManager/conf.d/99-mac-privacy.conf`
+
 ```ini
 [connection]
 wifi.cloned-mac-address=stable
@@ -317,15 +359,14 @@ ethernet.cloned-mac-address=stable
 connection.stable-id=${CONNECTION}/${BOOT}
 ```
 
-**`/etc/NetworkManager/conf.d/31-mac-addr-change.conf`:**
+Файл: `/etc/NetworkManager/conf.d/31-mac-addr-change.conf`
+
 ```ini
 # Masked: iwlwifi driver supports MAC randomization
 # Original file: /usr/lib/NetworkManager/conf.d/31-mac-addr-change.conf
 ```
 
----
-
-## Полезные команды
+## 10. Полезные команды
 
 ```bash
 # Мониторинг изменений MAC
@@ -344,12 +385,25 @@ NetworkManager --print-config
 nmcli connection show --active
 
 # Ручная смена MAC (тестирование)
-sudo ip link set wlan0 down
-sudo ip link set wlan0 address 92:4a:00:00:00:01
-sudo ip link set wlan0 up
+doas ip link set wlan0 down
+doas ip link set wlan0 address 92:4a:00:00:00:01
+doas ip link set wlan0 up
 ```
 
----
+## 11. Historical incident context
 
-**Дата:** 2026-03-03  
-**Окружение:** Gentoo Linux, NetworkManager 1.4x+, iwd 2.x
+- **Дата:** 2026-03-03
+- **Окружение:** Gentoo Linux
+- **NetworkManager:** 1.4x+
+- **iwd:** 2.x
+
+Это историческое окружение исходного инцидента. Текущее подтверждённое
+состояние ASUS B5402 находится в
+[системном документе](../systems/asus-b5402/networking/networkmanager-and-libvirt.md).
+
+## Related docs
+
+- [NetworkManager + iwd](../networking/networkmanager-iwd.md) — общая
+  конфигурация NetworkManager с backend iwd.
+- [Сеть ASUS B5402](../systems/asus-b5402/networking/networkmanager-and-libvirt.md)
+  — текущее подтверждённое состояние эталонной системы.

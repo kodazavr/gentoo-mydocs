@@ -74,9 +74,8 @@ policy drop в таблице Docker, обработанный в той же т
 
 ### Reference system: ASUS B5402
 
-Решение проверялось на ASUS B5402. На эталонной системе его system-specific
-часть хранится в `/etc/nftables/rules/libvirt_fix.nft`; фактическая структура,
-текущие версии и подтверждённое состояние находятся в
+Решение проверялось на ASUS B5402. Фактическая структура, текущие версии и
+подтверждённое состояние находятся в
 [системном документе](../systems/asus-b5402/networking/networkmanager-and-libvirt.md).
 Текущее состояние эталонной системы здесь не дублируется.
 
@@ -182,20 +181,7 @@ $ doas chmod 644 /etc/nftables/rules/main.nft
 $ doas /usr/sbin/nft -c -f /etc/nftables/rules/main.nft
 ```
 
-### 4. Apply
-
-> ⚠️ **Важный нюанс**: `flush ruleset` удаляет уже загруженные правила, а
-> загрузка нового файла может немедленно изменить сетевую доступность.
-
-```bash
-# Применение правил
-$ doas /usr/sbin/nft -f /etc/nftables/rules/main.nft
-
-# Альтернатива — через systemd
-$ doas systemctl restart nftables
-```
-
-### 5. Verify
+### 4. Pre-fix verification / baseline
 
 Проверь ожидаемый источник блокировки до применения фикса:
 
@@ -222,6 +208,21 @@ $ ping -c 3 1.1.1.1
 # ping: connect: Network is unreachable
 # или 100% packet loss
 ```
+
+### 5. Apply
+
+> ⚠️ **Важный нюанс**: `flush ruleset` удаляет уже загруженные правила, а
+> загрузка нового файла может немедленно изменить сетевую доступность.
+
+```bash
+# Применение правил
+$ doas /usr/sbin/nft -f /etc/nftables/rules/main.nft
+
+# Альтернатива — через systemd
+$ doas systemctl restart nftables
+```
+
+### 6. Post-fix verification
 
 После применения проверь наличие table и chain:
 
@@ -263,7 +264,7 @@ $ doas nft list chain ip gentoo_bridge_libvirt bypass_docker -a
 # counter packets 1234 bytes 567890 ip saddr 10.0.0.0/24 accept # ← счётчик растёт
 ```
 
-### 6. Enable persistence
+### 7. Enable persistence
 
 После проверки результата убедись, что unit видит файл, и включи
 автозагрузку:
