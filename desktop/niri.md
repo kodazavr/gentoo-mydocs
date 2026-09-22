@@ -6,118 +6,144 @@ last_verified: 2026-09-22
 verified_on: [asus-b5402]
 ---
 
-# Niri: Тайловый композитор со скроллингом
+# Niri: тайловый композитор со скроллингом
 
 Niri — Wayland-композитор, который вместо классической сетки использует
-горизонтальную ленту окон. Записанное состояние ASUS B5402 находится в
-[системном разделе](../systems/asus-b5402/desktop/environment.md).
+горизонтальную ленту окон. Результат этого руководства — рабочая сессия:
 
-## 1. Установка
-
-В Gentoo Niri обычно доступен через оверлеи (например, guru) или как бинарный пакет/ebuild для сборки из исходников.
-
-Убедитесь, что пакет собран с поддержкой нужных вам функций (например, screencast).
-
-## 2. Запуск (Pure Wayland)
-
-Ниже приведён вариант запуска через display manager greetd.
-
-Для корректной работы GTK/Qt приложений в Wayland-режиме, добавьте в переменные окружения (например, в `~/.config/niri/config.kdl`):
-
-```kdl
-environment {
-    // ==========================================
-    // Core Wayland Session
-    // ==========================================
-    XDG_SESSION_TYPE "wayland"
-    XDG_CURRENT_DESKTOP "niri"
-    XDG_SESSION_DESKTOP "niri"
-    
-    // ==========================================
-    // GDK / GTK Applications
-    // ==========================================
-    GDK_BACKEND "wayland"
-    // GDK_SCALE убран — берёт из monitor config
-    
-    // ==========================================
-    // QT Applications
-    // ==========================================
-    QT_QPA_PLATFORM "wayland"
-    QT_WAYLAND_DISABLE_WINDOWDECORATION "1"
-    QT_QPA_PLATFORMTHEME "qt6ct"
-    
-    // ==========================================
-    // Other Toolkits
-    // ==========================================
-    CLUTTER_BACKEND "wayland"
-    SDL_VIDEODRIVER "wayland"
-    
-    // ==========================================
-    // Graphics & Browsers
-    // ==========================================
-    EGL_PLATFORM "wayland"
-    MOZ_ENABLE_WAYLAND "1"
-    MOZ_DBUS_REMOTE "1"
-    MOZ_USE_XINPUT2 "1"
-    // ==========================================
-    // Electron / Chrome
-    // ==========================================
-    ELECTRON_OZONE_PLATFORM_HINT "auto"
-    
-    // ==========================================
-    // XWayland (опционально — лучше через systemd/user service)
-    // ==========================================
-    // DISPLAY ":0"                 
-}
+```text
+Niri
+→ native Wayland session
+→ niri-session
+→ systemd user session
+→ XDG autostart
+→ portals / polkit / shell as desktop components
 ```
 
-### Автозапуск приложений
+Записанное состояние эталонной системы ASUS B5402 — в
+[системном разделе](../systems/asus-b5402/desktop/environment.md).
 
-Niri-сессия (`niri-session`) работает как systemd session и штатно поднимает
-`xdg-desktop-autostart.target`, поэтому приложения с XDG autostart entry
-(`/etc/xdg/autostart/*.desktop`) запускаются сами. Не дублируйте такое
-приложение через `spawn-at-startup`/`spawn-sh-at-startup` в `config.kdl` —
-получатся два экземпляра. Типичный пример — polkit authentication agent,
+## Launch
+
+### Установка
+
+В Gentoo Niri обычно доступен через оверлеи (например, guru) или собственный
+ebuild. Захват экрана и системные диалоги обеспечивают portal-бэкенды — см.
+[XDG Desktop Portals](wayland-portals.md).
+
+### niri-session
+
+На systemd-системе основной способ запуска — `niri-session`. Он:
+
+- стартует Niri как user-юнит `niri.service`;
+- сам занимается интеграцией session environment с user systemd и D-Bus:
+  `XDG_SESSION_TYPE=wayland`, `XDG_CURRENT_DESKTOP=niri` и остальные
+  session-переменные создаются и импортируются автоматически;
+- поднимает `graphical-session.target`, а вместе с ним —
+  `xdg-desktop-autostart.target`.
+
+Поэтому при запуске через `niri-session` не нужно вручную задавать
+`XDG_*`-переменные или вызывать `dbus-update-activation-environment`.
+
+### Display manager: greetd + tuigreet
+
+Пример `/etc/greetd/config.toml` с tuigreet в качестве greeter:
+
+```toml
+[terminal]
+vt = 1
+
+[default_session]
+command = "tuigreet --time --remember --asterisks --cmd niri-session"
+user = "greetd"
+```
+
+Greeter'у достаточно указать `niri-session` командой сессии. Niri работает и с
+другими display manager'ами — важно запускать именно `niri-session`, а не
+голый бинарник `niri`, если нужна systemd-интеграция.
+
+## Configuration
+
+Конфигурация — `~/.config/niri/config.kdl` (формат KDL). Основные категории:
+
+- `input` — клавиатура, тачпад, жесты, ускорение (libinput);
+- `outputs` — мониторы, масштаб, положение;
+- `layout` — ширина колонок, отступы, пресеты;
+- `window-rule` — плавающие окна, декорации, правила для отдельных приложений;
+- `binds` — клавиатурные сокращения;
+- `spawn-at-startup` — запуск программ при старте (см. Autostart).
+
+Полный reference — [Niri wiki: Configuration](https://github.com/YaLTeR/niri/wiki/Configuration:-Overview).
+Базовый блок `environment {}` с session-переменными не нужен: их уже
+выставляет `niri-session`.
+
+## Autostart
+
+`niri-session` поднимает `graphical-session.target`, а вместе с ним —
+`xdg-desktop-autostart.target`. Приложения с XDG autostart entry
+(`/etc/xdg/autostart/*.desktop`, `~/.config/autostart/*.desktop`) запускаются
+сами.
+
+Не дублируйте такое приложение через `spawn-at-startup`/`spawn-sh-at-startup`
+— получится два экземпляра. Типичный пример — polkit authentication agent,
 которого на пользовательскую сессию допускается ровно один: второй экземпляр
-завершается ошибкой регистрации (`An authentication agent already exists
-for the given subject`).
+завершается ошибкой регистрации (`An authentication agent already exists for
+the given subject`).
 
 - [Niri wiki — Integrating niri (Autostart)](https://github.com/YaLTeR/niri/wiki/Integrating-niri)
 - [Niri wiki — Configuration: Miscellaneous (`spawn-at-startup`)](https://github.com/YaLTeR/niri/wiki/Configuration:-Miscellaneous)
 
-## 3. Основные концепции конфига
+## Optional application environment
 
-Конфигурация Niri использует формат KDL. Основные элементы:
+Отдельным приложениям иногда нужны свои переменные. Их задают точечно, а не
+глобальным блоком в `config.kdl`:
 
-- **Layout**: Настройка ширины колонок (по умолчанию 0.5 или "пресеты").
-- **Input**: Настройка тачпада с поддержкой жестов и ускорения (libinput).
-- **Window Rules**: Отключение украшений окон или принудительный запуск определенных приложений в плавающем режиме.
-
-## Настройка Display Manager
-
-Niri поддерживает большинство Display Manager'ов.
-
-### Greetd
-
-Ниже приведен пример конфигурации с использованием Tuigreet в качестве greeter:
-
-Файл: `/etc/greetd/config.toml`
-
-```toml
-[terminal]
-# The VT to run the greeter on. Can be "next", "current" or a number
-# designating the VT.
-vt = 1
-
-# The default session, also known as the greeter.
-[default_session]
-
-# `agreety` is the bundled agetty/login-lookalike. You can replace `/bin/sh`
-# with whatever you want started, such as `sway`.
-command = "tuigreet --time --remember --asterisks --cmd niri-session"
-
-# The user to run the command as. The privileges this user must have depends
-# on the greeter. A graphical greeter may for example require the user to be
-# in the `video` group.
-user = "greetd"
+```kdl
+environment {
+    // Тема Qt через qt6ct
+    QT_QPA_PLATFORMTHEME "qt6ct"
+    // Electron/Chromium: нативный Wayland-режим
+    ELECTRON_OZONE_PLATFORM_HINT "auto"
+}
 ```
+
+Глобально задавать backend'ы тулкитов (`GDK_BACKEND=wayland`,
+`QT_QPA_PLATFORM=wayland`, `SDL_VIDEODRIVER=wayland`, `EGL_PLATFORM=wayland`)
+не нужно: в Wayland-сессии тулкиты выбирают Wayland сами. Upstream Niri
+предупреждает, что глобальный `GDK_BACKEND=wayland` ломает screencast portal.
+Отдельная переменная оправдана, только когда конкретное приложение само не
+подхватывает Wayland.
+
+## Xwayland (optional)
+
+Xwayland не обязателен. Если нужны X11-приложения, установите
+`xwayland-satellite`: современные версии Niri запускают его автоматически при
+старте и выставляют `DISPLAY` для дочерних процессов (на эталонной системе —
+niri 26.04). Ручной запуск satellite или ручной экспорт `DISPLAY` как baseline
+не нужны. Подробнее — [Niri wiki](https://github.com/YaLTeR/niri/wiki).
+
+## Verification
+
+Внутри запущенной сессии:
+
+```bash
+# Сессия представилась как niri
+echo "$XDG_CURRENT_DESKTOP"
+
+# Niri и session targets подняты как user-юниты
+systemctl --user is-active niri.service \
+                     graphical-session.target \
+                     xdg-desktop-autostart.target
+```
+
+Ожидаемый результат: `niri` и `active` для каждого юнита. Затем можно
+проверить компоненты сессии: [portals](wayland-portals.md) и, при
+использовании, [Noctalia](noctalia-shell.md).
+
+## Related docs
+
+- [XDG Desktop Portals](wayland-portals.md) — screencast и диалоги.
+- [Noctalia v5 для Niri](noctalia-shell.md) — оболочка.
+- [Рабочее окружение ASUS B5402](../systems/asus-b5402/desktop/environment.md)
+  — фактическое состояние.
+- [Niri wiki](https://github.com/YaLTeR/niri/wiki) — полный reference.

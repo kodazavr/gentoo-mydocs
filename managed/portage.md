@@ -88,10 +88,10 @@ doas eix-update             # перестроить индекс после syn
 
 ### Что такое @world
 
-- `@system` — базовые пакеты, определённые профилем;
-- `@selected` — пакеты и sets, явно выбранные пользователем (всё, что
-  ставилось без `--oneshot`);
-- `@world` — объединение этих наборов.
+- `@selected` — явно выбранные пакеты и sets (`selected-packages` +
+  `selected-sets`); сюда попадает всё, что ставилось без `--oneshot`;
+- `@system` и `@profile` — наборы, задаваемые профилем;
+- `@world` — охватывает `@selected`, `@system` и `@profile`.
 
 Сами по себе sets не «включают все зависимости»: полный граф для операции
 строит resolver — в него попадают пакеты, необходимые для установки
@@ -355,9 +355,9 @@ Gentoo публикует уведомления о безопасности (GL
 `glsa-check` (`app-portage/gentoolkit`):
 
 ```bash
-glsa-check --list new       # новые GLSA
-glsa-check --test all       # какие затрагивают систему
-glsa-check --pretend all    # какие шаги нужны для исправления
+glsa-check --test all          # какие GLSA затрагивают систему
+glsa-check --list affected     # список затрагивающих
+glsa-check --pretend affected  # какие шаги нужны для исправления
 ```
 
 Применение изменений — отдельная операция (`--fix`, экспериментальная
@@ -398,8 +398,8 @@ Build-time зависимости Portage учитывает автоматич�
 
 Ядро в Gentoo — обычные пакеты Portage:
 
-- `sys-kernel/gentoo-kernel` — dist-kernel: ядро собирает ebuild, конфиг
-  ведётся через `savedconfig`;
+- `sys-kernel/gentoo-kernel` — dist-kernel, который собирает ebuild;
+  конфигурацию можно кастомизировать, в том числе через `savedconfig`;
 - `sys-kernel/gentoo-sources` — только исходники; сборка и установка
   вручную.
 
@@ -435,12 +435,11 @@ systemd-boot разобрана в [systemd-uki-setup](../installation/systemd-u
 
 ### Система сломалась после обновления
 
-Загрузитесь с live-носителя, смонтируйте разделы, войдите в chroot и
-обновляйтесь:
-
-```bash
-doas emerge --ask --verbose --update @world
-```
+Загрузитесь с live-носителя, смонтируйте разделы и войдите в chroot.
+Дальнейшее зависит от причины сбоя: незавершённую merge list можно
+продолжить через `emerge --resume`, проблемный пакет — переустановить
+отдельно, либо заново рассчитать обычное `@world`-обновление. Единой
+repair-команды нет: сначала разберитесь, что именно сломалось.
 
 ## Related docs
 

@@ -8,42 +8,47 @@ verified_on: [asus-b5402]
 
 # Приложения по умолчанию и MIME-типы (XDG)
 
-`xdg-mime` задаёт, какое приложение открывает ссылку, документ или файл
-определённого MIME-типа. Настройки действуют для пользовательской сессии и не
-зависят от Wayland-композитора. Приложения, включая Flatpak, обычно используют
-эти XDG-ассоциации при открытии внешних ссылок.
-
-## 1. Перед настройкой
-
-Узнай текущего обработчика для нужного типа:
+Посмотреть и изменить приложение по умолчанию для MIME-типа или URI-схемы:
 
 ```bash
-xdg-mime query default x-scheme-handler/http
-xdg-mime query default x-scheme-handler/https
-xdg-mime query default text/html
-xdg-mime query default application/pdf
+xdg-mime query default <mime-or-scheme>          # текущий обработчик
+xdg-mime default <desktop-id> <mime-or-scheme>   # назначить обработчик
 ```
 
-Команды возвращают ID desktop-файла, например `firefox.desktop` или
-`com.google.Chrome.desktop`. Он не обязан совпадать с именем исполняемого
-файла.
+Пример:
 
-> **Примечание**: для ассоциации нужен установленный desktop-файл. Локальные
-> файлы обычно находятся в `~/.local/share/applications/`, системные — в
-> `/usr/share/applications/`.
+```bash
+xdg-mime query default x-scheme-handler/https
+xdg-mime default firefox.desktop x-scheme-handler/https
+```
 
-## 2. Базовые ассоциации
+Ассоциации действуют для пользовательской сессии и не зависят от
+Wayland-композитора. Приложения, включая Flatpak, обычно используют эти
+XDG-ассоциации при открытии внешних ссылок.
 
-Следующий набор подходит для Firefox, qimgv и mpv:
+## Desktop ID и mimeapps.list
 
-| Тип | Приложение | Desktop ID |
-|-----|------------|------------|
-| HTTP(S)-ссылки и HTML | Firefox | `firefox.desktop` |
-| PDF | Firefox | `firefox.desktop` |
-| JPEG, PNG, GIF, WebP, BMP | qimgv | `qimgv.desktop` |
-| Аудио и видео | mpv | `mpv.desktop` |
+Команды работают с ID desktop-файла, например `firefox.desktop` или
+`com.google.Chrome.desktop`. ID не обязан совпадать с именем исполняемого
+файла. Для ассоциации нужен установленный desktop-файл: локальные обычно
+находятся в `~/.local/share/applications/`, системные — в
+`/usr/share/applications/`.
 
-Установить Firefox обработчиком ссылок, HTML и PDF:
+Результат `xdg-mime default` сохраняется в пользовательском `mimeapps.list`,
+обычно в `~/.config/mimeapps.list`. По XDG-спецификации это не единственное
+возможное местоположение: существуют также системные и desktop-специфичные
+файлы (например, `<desktop>-mimeapps.list`). Настройка сохраняется между
+перезагрузками, но её может изменить интерфейс рабочего стола или другое
+приложение. Если файл управляется через dotfiles, перед добавлением проверь,
+что перечисленные desktop-файлы существуют на целевой системе.
+
+## Examples
+
+Ниже — примеры, а не универсальный набор по умолчанию: подставляй свои
+desktop ID. Какие приложения реально установлены на эталонной системе,
+зафиксировано в [её записи](../systems/asus-b5402/applications.md).
+
+### HTTP/HTML/PDF (пример: Firefox)
 
 ```bash
 xdg-mime default firefox.desktop x-scheme-handler/http
@@ -53,7 +58,7 @@ xdg-mime default firefox.desktop application/xhtml+xml
 xdg-mime default firefox.desktop application/pdf
 ```
 
-Установить qimgv обработчиком распространённых форматов изображений:
+### Images (пример: qimgv)
 
 ```bash
 xdg-mime default qimgv.desktop image/jpeg
@@ -63,7 +68,7 @@ xdg-mime default qimgv.desktop image/webp
 xdg-mime default qimgv.desktop image/bmp
 ```
 
-Если mpv ещё не выбран, назначить его для используемых аудио- и видеоформатов:
+### Audio/video (пример: mpv)
 
 ```bash
 xdg-mime default mpv.desktop audio/mpeg
@@ -74,10 +79,10 @@ xdg-mime default mpv.desktop video/webm
 xdg-mime default mpv.desktop video/x-matroska
 ```
 
-## 3. URI-схемы отдельных приложений
+### Custom URI schemes
 
-Протоколы вида `perplexity-app://`, `tg://` или `steam://` назначай в
-документации соответствующего приложения. Для них используется тот же формат:
+Протоколы вида `perplexity-app://`, `tg://` или `steam://` назначай по
+документации соответствующего приложения. Формат тот же:
 
 ```bash
 xdg-mime default <application>.desktop x-scheme-handler/<scheme>
@@ -87,9 +92,9 @@ xdg-mime query default x-scheme-handler/<scheme>
 См. [Perplexity AppImage](../settings/perplexity.md) и
 [r2modman](../settings/r2modman.md).
 
-## 4. Проверка и хранение настроек
+## Verification
 
-Проверь получившиеся ассоциации:
+Собранные query-команды для основных типов:
 
 ```bash
 xdg-mime query default x-scheme-handler/http
@@ -100,11 +105,10 @@ xdg-mime query default image/png
 xdg-mime query default video/mp4
 ```
 
-`xdg-mime` сохраняет результат в пользовательском `mimeapps.list`, обычно в
-`~/.config/mimeapps.list`. Настройка сохраняется между перезагрузками, но её
-может изменить интерфейс рабочего стола или другое приложение. Если файл
-управляется через dotfiles, перед добавлением проверь, что перечисленные
-desktop-файлы существуют на целевой системе.
-
 Чтобы заменить обработчик, повтори команду `xdg-mime default` с другим
 desktop ID. Ручное редактирование `mimeapps.list` обычно не требуется.
+
+## Related docs
+
+- [Приложения ASUS B5402](../systems/asus-b5402/applications.md) — фактический
+  набор приложений эталонной системы.
