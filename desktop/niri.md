@@ -93,34 +93,25 @@ the given subject`).
 - [Niri wiki — Integrating niri (Autostart)](https://github.com/YaLTeR/niri/wiki/Integrating-niri)
 - [Niri wiki — Configuration: Miscellaneous (`spawn-at-startup`)](https://github.com/YaLTeR/niri/wiki/Configuration:-Miscellaneous)
 
-## Optional application environment
+## Optional environment for processes spawned by Niri
 
-Отдельным приложениям иногда нужны свои переменные. Их задают точечно, а не
-глобальным блоком в `config.kdl`:
+`environment {}` задаёт переменные для процессов, которые Niri запускает
+непосредственно. Это не механизм для настройки отдельных приложений, и эти
+значения не попадают автоматически в окружение systemd --user.
 
-```kdl
-environment {
-    // Тема Qt через qt6ct
-    QT_QPA_PLATFORMTHEME "qt6ct"
-    // Electron/Chromium: нативный Wayland-режим
-    ELECTRON_OZONE_PLATFORM_HINT "auto"
-}
-```
+Если переменная нужна только одному приложению, используй wrapper/launcher
+или соответствующий systemd unit.
 
 Глобально задавать backend'ы тулкитов (`GDK_BACKEND=wayland`,
 `QT_QPA_PLATFORM=wayland`, `SDL_VIDEODRIVER=wayland`, `EGL_PLATFORM=wayland`)
 не нужно: в Wayland-сессии тулкиты выбирают Wayland сами. Upstream Niri
 предупреждает, что глобальный `GDK_BACKEND=wayland` ломает screencast portal.
-Отдельная переменная оправдана, только когда конкретное приложение само не
-подхватывает Wayland.
-
 ## Xwayland (optional)
 
 Xwayland не обязателен. Если нужны X11-приложения, установите
-`xwayland-satellite`: современные версии Niri запускают его автоматически при
-старте и выставляют `DISPLAY` для дочерних процессов (на эталонной системе —
-niri 26.04). Ручной запуск satellite или ручной экспорт `DISPLAY` как baseline
-не нужны. Подробнее — [Niri wiki](https://github.com/YaLTeR/niri/wiki).
+`xwayland-satellite >= 0.7`: Niri автоматически интегрирует его. Ручной
+экспорт `$DISPLAY` и ручной запуск satellite как baseline не нужны. Подробнее
+— [Niri wiki](https://github.com/YaLTeR/niri/wiki).
 
 ## Verification
 

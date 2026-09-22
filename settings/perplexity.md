@@ -6,72 +6,43 @@ last_verified: 2026-09-22
 verified_on: [asus-b5402]
 ---
 
-# Perplexity (AppImage) в меню приложений Niri/Wayland
+# Perplexity AppImage в Wayland desktop
 
-> Интеграция Perplexity AppImage в меню приложений на Wayland. Записанная
-> конфигурация ASUS B5402 находится в
-> [`systems/asus-b5402/applications.md`](../systems/asus-b5402/applications.md).
+Perplexity AppImage можно интегрировать в Wayland desktop стабильным путём,
+desktop entry, иконкой и URI handler:
 
----
-
-## Проблема
-
-Perplexity распространяется как AppImage. После скачивания его нужно:
-
-- поместить в постоянное место;
-- сделать исполняемым;
-- добавить в меню приложений (`.desktop`);
-- настроить нативный Wayland-запуск, если в целевой системе отключён XWayland.
-
----
-
-## Что понадобится
-
-- Скачанный `Perplexity-*.AppImage`
-- `sys-fs/fuse` или `sys-fs/fuse-static` для запуска AppImage
-- `xdg-utils` для регистрации обработчика схемы `perplexity-app://`
-
-Проверка наличия fuse:
-
-```bash
-which fusermount
+```text
+AppImage
+→ ~/.local/bin/
+→ desktop entry
+→ Wayland launch
+→ perplexity-app:// handler
 ```
 
----
+Записанная конфигурация ASUS B5402 находится в
+[applications.md](../systems/asus-b5402/applications.md).
 
-## 1. Подготовка AppImage
+## Prerequisites
 
-Перемещаем AppImage в `~/.local/bin/` и даём права на исполнение:
-
-```bash
-mv ~/Downloads/Perplexity-1.6.0-x86_64.AppImage ~/.local/bin/Perplexity.AppImage
-chmod +x ~/.local/bin/Perplexity.AppImage
-```
-
-> **Примечание**: версия в имени файла может отличаться. При обновлении заменяй файл и обновляй `Exec=` в `.desktop`, если путь изменился.
-
----
-
-## 2. Извлечение иконки
-
-AppImage содержит иконки внутри `squashfs-root/usr/share/icons/hicolor/`. Извлекаем их во временную директорию и копируем в `~/.local/share/icons/`:
+Нужны скачанный AppImage, `dev-util/desktop-file-utils` для
+`desktop-file-validate` и `update-desktop-database`, а также `xdg-utils` для
+регистрации `perplexity-app://`. FUSE2 нужен только обычному Type-2 AppImage,
+который сообщает, что требует FUSE или `libfuse.so.2`.
 
 ```bash
-cd /tmp
-rm -rf perplexity-extract
-mkdir perplexity-extract && cd perplexity-extract
-~/.local/bin/Perplexity.AppImage --appimage-extract >/dev/null 2>&1
-
-for size in 16 32 48 64 128 256 512 1024; do
-  mkdir -p "$HOME/.local/share/icons/hicolor/${size}x${size}/apps"
-  cp "squashfs-root/usr/share/icons/hicolor/${size}x${size}/apps/Perplexity.png" \
-     "$HOME/.local/share/icons/hicolor/${size}x${size}/apps/Perplexity.png"
-done
+command -v fusermount
 ```
 
----
+## Install AppImage
 
-## 3. Создание .desktop файла
+Используй стабильное имя target, чтобы обновление не меняло `Exec=`:
+
+```bash
+mv "$HOME/Downloads/<downloaded-Perplexity-AppImage>" "$HOME/.local/bin/Perplexity.AppImage"
+chmod +x "$HOME/.local/bin/Perplexity.AppImage"
+```
+
+## Desktop entry
 
 Файл: `~/.local/share/applications/perplexity.desktop`
 
@@ -79,126 +50,121 @@ done
 [Desktop Entry]
 Name=Perplexity
 Comment=AI-powered search and chat
-Exec=env ELECTRON_OZONE_PLATFORM_HINT=wayland /home/<username>/.local/bin/Perplexity.AppImage --ozone-platform=wayland --no-sandbox %U
+Exec=env ELECTRON_OZONE_PLATFORM_HINT=wayland /home/<username>/.local/bin/Perplexity.AppImage --ozone-platform=wayland %U
 Terminal=false
 Type=Application
 Icon=Perplexity
-StartupWMClass=Perplexity
-X-AppImage-Version=1.6.0
 MimeType=x-scheme-handler/perplexity-app;
 Categories=Network;Chat;
 TryExec=/home/<username>/.local/bin/Perplexity.AppImage
 ```
 
-> **Важно**: `StartupWMClass=Perplexity` взят из внутреннего `.desktop` AppImage. Это позволяет Noctalia/Niri корректно группировать окно приложения.
+Замени `/home/<username>` на свой абсолютный путь: desktop entry не разворачивает
+`$HOME` как shell. `ELECTRON_OZONE_PLATFORM_HINT=wayland` и
+`--ozone-platform=wayland` задают современный Wayland path для Electron.
 
-Ключевые параметры Wayland:
+`--no-sandbox` не является требованием AppImage и не должен быть baseline:
+он ослабляет Electron sandbox. Если конкретный AppImage не запускается из-за
+sandbox, сначала проверь точное сообщение об ошибке и поддержку unprivileged
+user namespaces. Только затем оцени отдельный workaround и его последствия.
 
-- `ELECTRON_OZONE_PLATFORM_HINT=wayland` — говорит Electron использовать Ozone/Wayland.
-- `--ozone-platform=wayland` — дублирует выбор бэкенда на уровне командной строки.
-- `--no-sandbox` — требуется AppImage, так как внутри него нет SUID sandbox.
+Поля наподобие `StartupWMClass` и `X-AppImage-Version` добавляй лишь когда они
+действительно присутствуют во внутреннем desktop entry AppImage или нужны для
+этого приложения; это не общие требования.
 
----
+## Icon
 
-## 4. Регистрация в системе
+Сначала извлеки AppImage и посмотри, какие иконки в нём действительно есть:
 
-Обновляем кэш `.desktop` файлов и регистрируем обработчик ссылки `perplexity-app://`:
+```bash
+workdir=$(mktemp -d)
+cd "$workdir"
+"$HOME/.local/bin/Perplexity.AppImage" --appimage-extract
+find squashfs-root -type f \( -iname '*.png' -o -iname '*.svg' \) | sort
+```
+
+Скопируй существующую подходящую иконку в каталог с соответствующим размером,
+например:
+
+```bash
+mkdir -p "$HOME/.local/share/icons/hicolor/256x256/apps"
+cp "<path-to-existing-icon>" "$HOME/.local/share/icons/hicolor/256x256/apps/Perplexity.png"
+```
+
+Не предполагается, что AppImage содержит все размеры иконок. При необходимости
+обнови icon cache после копирования:
+
+```bash
+gtk-update-icon-cache "$HOME/.local/share/icons/hicolor/"
+```
+
+## URI handler
+
+Обнови desktop database и назначь handler:
 
 ```bash
 update-desktop-database ~/.local/share/applications/
 xdg-mime default perplexity.desktop x-scheme-handler/perplexity-app
-```
-
-Проверка:
-
-```bash
 xdg-mime query default x-scheme-handler/perplexity-app
-# Ожидаемый вывод: perplexity.desktop
 ```
 
----
+Последняя команда должна вывести `perplexity.desktop`. Общие правила для MIME
+и URI scheme описаны в [приложениях по умолчанию](../desktop/default-applications.md).
 
-## 5. Проверка запуска
+## Verification
 
-Пробуем запустить из терминала:
+Проверь в одном месте:
+
+- `~/.local/bin/Perplexity.AppImage` существует и исполняем;
+- desktop entry проходит проверку и виден launcher'у;
+- иконка разрешается в меню;
+- `gtk-launch perplexity.desktop` запускает приложение;
+- `xdg-mime query default x-scheme-handler/perplexity-app` возвращает `perplexity.desktop`;
+- приложение действительно использует Wayland backend.
 
 ```bash
+desktop-file-validate ~/.local/share/applications/perplexity.desktop
 gtk-launch perplexity.desktop
-```
-
-Или напрямую:
-
-```bash
-~/.local/bin/Perplexity.AppImage
-```
-
-Если окно появилось и работает нативно на Wayland — интеграция успешна.
-
-Проверить бэкенд можно через:
-
-```bash
-WAYLAND_DEBUG=1 ~/.local/bin/Perplexity.AppImage 2>&1 | head -20
-```
-
-Должны быть сообщения о Wayland, а не X11.
-
----
-
-## Возможные проблемы
-
-### AppImage не запускается: `FUSE` не найден
-
-Установи fuse:
-
-```bash
-doas emerge -av sys-fs/fuse
-```
-
-Альтернатива — распаковать AppImage и запускать `squashfs-root/AppRun`:
-
-```bash
-cd ~/.local/bin
-./Perplexity.AppImage --appimage-extract
-# Затем запускать через ~/.local/bin/squashfs-root/AppRun
-```
-
-### Мигает/не рисуется интерфейс на Wayland
-
-Попробуй добавить `--enable-features=UseOzonePlatform` в `Exec=`:
-
-```ini
-Exec=env ELECTRON_OZONE_PLATFORM_HINT=wayland /home/<username>/.local/bin/Perplexity.AppImage --ozone-platform=wayland --enable-features=UseOzonePlatform --no-sandbox %U
-```
-
-Если не помогает — временно вернуть через XWayland (потребуется `gui-wm/xwayland` и USE-флаг `xwayland`).
-
-### Иконка не отображается в меню
-
-Проверь, что иконка лежит в `~/.local/share/icons/hicolor/256x256/apps/Perplexity.png`, и обнови кэш:
-
-```bash
-gtk-update-icon-cache ~/.local/share/icons/hicolor/
-```
-
-### Ссылки `perplexity-app://` не открываются
-
-Проверь регистрацию:
-
-```bash
 xdg-mime query default x-scheme-handler/perplexity-app
 ```
 
-Если пусто — повтори:
+`WAYLAND_DEBUG=1` можно использовать как расширенную диагностику, но это не
+единственный способ подтвердить backend: также подходят сведения самого
+приложения или compositor о его окне.
+
+## Troubleshooting
+
+### FUSE not found
+
+Если обычный Type-2 AppImage сообщает, что требует FUSE или `libfuse.so.2`,
+установи FUSE2 slot:
 
 ```bash
+doas emerge --ask sys-fs/fuse:0
+```
+
+`--appimage-extract` остаётся fallback для конкретного AppImage; extraction
+не является предпочтительным способом установки.
+
+### Wayland launch fails
+
+Сначала проверь вывод приложения и текущие Electron/Ozone flags. Дополнительные
+Chromium flags добавляй только для подтверждённой версии и симптома, а не как
+исторический baseline. Не добавляй `--no-sandbox` в общий desktop entry.
+
+### Icon or URI handler is missing
+
+Проверь путь к реально извлечённой иконке и повтори обновление icon cache.
+Для URI handler повтори:
+
+```bash
+xdg-mime query default x-scheme-handler/perplexity-app
 xdg-mime default perplexity.desktop x-scheme-handler/perplexity-app
 ```
 
----
+## Related docs
 
-## Связанные документы
-
-- [flatpak](flatpak.md) — другие GUI-приложения в системе устанавливаются через Flatpak.
+- [Flatpak](flatpak.md) — другой способ установки GUI-приложений.
 - [r2modman](r2modman.md) — пример интеграции AppImage со Steam Flatpak.
-- [niri](../desktop/niri.md) — конфигурация Wayland-композитора.
-- [Приложения по умолчанию](../desktop/default-applications.md) — общие MIME-ассоциации и URI-схемы через XDG.
+- [Niri](../desktop/niri.md) — Wayland-композитор.
+- [Приложения по умолчанию](../desktop/default-applications.md) — MIME-ассоциации и URI schemes через XDG.

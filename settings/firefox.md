@@ -6,78 +6,108 @@ last_verified: 2026-09-22
 verified_on: [asus-b5402]
 ---
 
-# Веб-браузер: Firefox (Gentoo Way)
+# Firefox: native Gentoo/Wayland application
 
-Документ описывает сборку Firefox с LLVM, аппаратным ускорением Wayland и
-profile-sync-daemon. Действовавшие параметры ASUS B5402 записаны в
-[системном разделе](../systems/asus-b5402/applications.md).
+Firefox в Gentoo можно собрать Clang'ом, при необходимости с PGO, и запустить
+как Wayland-приложение с аппаратным ускорением. `profile-sync-daemon` остаётся
+необязательной оптимизацией профиля:
 
-## 1. Сборка и оптимизация (Clang & PGO)
+```text
+Firefox from Gentoo
+→ Clang
+→ optional PGO
+→ Wayland
+→ hardware acceleration
+→ optional profile-sync-daemon
+```
 
-Использование современного тулчейна и профилирования позволяет получить максимально отзывчивый бинарный файл под архитектуру Alder Lake.
+Фактическая package policy ASUS B5402 остаётся в
+[applications.md](../systems/asus-b5402/applications.md) и
+[boot-and-portage.md](../systems/asus-b5402/system/boot-and-portage.md).
 
-| USE-flag | Описание |
-|---------|----------|
-| `clang` | Сборка компилятором LLVM. Флаг включён по умолчанию в ebuild'е, отдельный пин слота не нужен. |
-| `+pgo` | Profile-Guided Optimization. Сборка на основе реальных профилей использования (прирост скорости ~10%). |
-| `jumbo-build` | Ускорение компиляции объединением исходных файлов. Актуальный Gentoo profile форсирует его для Firefox, а `USE=pgo` также требует `jumbo-build`; локальный override не нужен. |
-| `-wifi -jpegxl` | Выключены геолокация по Wi-Fi и поддержка JPEG XL. |
-| `+system-lib*` | Использование системных библиотек (jpeg, png, webp, av1) для уменьшения оверхеда. |
+## Build policy
 
-## 2. Графический стек и Wayland
+USE-флаги определяют возможности собранного пакета; они не описывают
+фактический runtime браузера или всей системы.
 
-Для чистого Wayland-окружения Firefox можно собрать без X11.
+| USE-флаг | Назначение |
+|----------|------------|
+| `clang` | Собирает Firefox LLVM/Clang toolchain. |
+| `pgo` | Строит оптимизированный бинарный файл по результатам профилирования и заметно увеличивает время сборки. |
+| `jumbo-build` | Относится к процессу сборки: объединяет исходные файлы для компиляции. Это не самостоятельное обещание ускорения Firefox при работе. |
+| `hwaccel` | Добавляет поддержку аппаратного ускорения; её работа зависит также от драйвера, Mesa, VA-API и runtime. |
+| `wayland` | Добавляет Wayland backend. |
+| `pulseaudio` | Добавляет Firefox audio backend через libpulse/apulse. PipeWire может обслуживать его через PulseAudio-compatible runtime. |
+| `system-pipewire` | Использует системную `media-video/pipewire` для WebRTC и screencast вместо bundled library. |
+| `system-*` libraries | Используют системные библиотеки, когда это поддерживает ebuild: например, AV1, HarfBuzz, ICU, JPEG, libevent, libvpx, PNG и WebP. |
+| `wasm-sandbox` | Включает RLBox/WebAssembly sandbox для поддерживаемых сторонних библиотек. |
+| `wifi`, `jpegxl`, `telemetry` | Не являются универсальной политикой: включай или отключай их по требуемым возможностям и после проверки текущего ebuild. |
 
-- **Backend**: используй `-X +wayland`, если XWayland не нужен.
-- **HWACCEL**: включи `+hwaccel` после проверки драйвера ядра, Mesa и VA-API.
-- **Интеграция**: `+dbus`, `+pulseaudio` через PipeWire и `+system-pipewire`
-  обеспечивают WebRTC и захват экрана.
+`USE=-telemetry` собирает Firefox с отключёнными Mozilla
+data-reporting/telemetry build options. Это не следует трактовать как
+абсолютную гарантию отсутствия любых сетевых служебных запросов браузера.
+
+## Wayland and acceleration
+
+Для native Wayland Firefox достаточно `USE=wayland`. `USE=-X` имеет смысл
+только в сознательно выбранной pure Wayland-системе, где не нужен X11 backend;
+это не обязательное условие Wayland Firefox.
+
+`USE=hwaccel` лишь добавляет build support. Проверь отдельно runtime: драйвер
+ядра, Mesa, VA-API и настройки Firefox. `USE=pulseaudio` описывает Firefox
+audio backend через libpulse/apulse, а runtime PipeWire может предоставить ему
+PulseAudio-compatible layer. `USE=system-pipewire` отдельно выбирает системную
+`media-video/pipewire` для WebRTC и screencast вместо bundled library.
 
 Ассоциации Firefox для HTTP(S), HTML и PDF настраиваются через
 [приложения по умолчанию (XDG MIME)](../desktop/default-applications.md).
 
-### Пример package.use
+## Example package.use
+
+Это пример набора возможностей, а не универсальная рекомендуемая policy.
+Сверь флаги с текущим ebuild и выбери только необходимые:
+
+Файл: `/etc/portage/package.use/40-multimedia`
 
 ```makefile
-# /etc/portage/package.use/40-multimedia (тематический файл; подойдёт и отдельный файл firefox)
 media-libs/libpng          apng
 media-libs/libvpx          postproc
-www-client/firefox         hwaccel pulseaudio openh264 system-pipewire wasm-sandbox system-av1 system-harfbuzz system-icu system-jpeg system-libevent system-libvpx system-webp system-png -telemetry -wifi -jpegxl
+www-client/firefox         clang pgo jumbo-build hwaccel wayland pulseaudio openh264 system-pipewire wasm-sandbox system-av1 system-harfbuzz system-icu system-jpeg system-libevent system-libvpx system-webp system-png -telemetry -wifi -jpegxl
 ```
 
-## 3. Безопасность
+Если X11 backend действительно не нужен, добавь `-X` отдельным осознанным
+решением после проверки зависимостей приложений.
 
-- **RLBox**: Флаг `+wasm-sandbox` изолирует сторонние библиотеки (например, графические) в песочнице WebAssembly.
-- **Hardened**: Активированы дополнительные проверки защиты тулчейна.
-- **Telemetry**: `-telemetry` — полная вырезка аналитики и «стука» в Mozilla.
+## Optional: profile-sync-daemon
 
-## 4. Оптимизация профиля (Profile-sync-daemon)
+`profile-sync-daemon` временно размещает профиль браузера в tmpfs или overlay,
+а persistent state синхронизирует обратно. Это уменьшает записи в постоянное
+хранилище во время сессии, но требует понимать его расход памяти и поведение
+синхронизации при завершении работы или уходе в сон.
 
-Для переноса профиля в tmpfs можно использовать profile-sync-daemon (PSD).
-
-### Конфигурация (`~/.config/psd/psd.conf`)
-
-В примере профиль работает в tmpfs через Overlayfs.
+Файл: `~/.config/psd/psd.conf`
 
 ```bash
-# Использовать Overlayfs (быстрее и меньше RAM)
+# Использовать Overlayfs
 USE_OVERLAYFS="yes"
-# Синхронизация при уходе в сон (предотвращает потерю данных на ноутбуке)
+# Синхронизация при уходе в сон
 USE_SUSPSYNC="yes"
 # Только необходимый браузер
 BROWSERS=(firefox)
 ```
 
-### Проверка службы
-
-Управление осуществляется через пользовательский юнит systemd:
+## Verification
 
 ```bash
 systemctl --user status psd.service
 ```
 
-Пример показателей, которые стоит контролировать:
+Проверь в Firefox выбранный Wayland backend, доступность аппаратного ускорения
+и работу аудио/WebRTC в используемом runtime. Для PSD проверь статус
+пользовательского unit и ожидаемую точку монтирования его профиля.
 
-- **Размер профиля**: ~235M
-- **Overlayfs size**: ~69M (объем реально измененных данных в сессии)
-- **Точка монтирования**: /run/user/1000/psd/...
+## Related docs
+
+- [Firefox на ASUS B5402](../systems/asus-b5402/applications.md) — фактическая package policy и состояние машины.
+- [Portage и загрузка на ASUS B5402](../systems/asus-b5402/system/boot-and-portage.md) — системные настройки сборки.
+- [Приложения по умолчанию](../desktop/default-applications.md) — MIME-ассоциации.

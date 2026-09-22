@@ -2,7 +2,7 @@
 kind: guide
 scope: general
 status: current
-last_verified: 2026-09-22
+last_verified: 2026-09-15
 verified_on: [asus-b5402]
 ---
 
