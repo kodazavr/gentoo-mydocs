@@ -2,7 +2,7 @@
 kind: guide
 scope: general
 status: current
-last_verified: 2026-09-22
+last_verified: 2026-09-23
 verified_on: [asus-b5402]
 ---
 
@@ -14,8 +14,9 @@ verified_on: [asus-b5402]
 
 ```text
 xdg-desktop-portal       = frontend, с ним работают приложения
-xdg-desktop-portal-gtk   = common desktop portals
-xdg-desktop-portal-gnome = Niri screencast / screenshot path
+xdg-desktop-portal-gtk   = common/fallback desktop portals
+xdg-desktop-portal-gnome = Niri screencast path; может обслуживать screenshot
+oo7-portal или gnome-keyring = Secret portal, если он нужен приложениям
 ```
 
 Выбранная на эталонной системе ASUS B5402 связка записана в
@@ -25,34 +26,56 @@ xdg-desktop-portal-gnome = Niri screencast / screenshot path
 
 - `sys-apps/xdg-desktop-portal` — frontend: D-Bus-сервис, с которым работают
   приложения; по конфигурации выбирает бэкенды.
-- `sys-apps/xdg-desktop-portal-gtk` — общие порталы: FileChooser, AppChooser,
-  Settings и другие диалоги.
-- `sys-apps/xdg-desktop-portal-gnome` — ScreenCast и Screenshot: Niri
-  реализует mutter ScreenCast D-Bus API, и его обслуживает именно
+- `sys-apps/xdg-desktop-portal-gtk` — common/fallback portal backend.
+- `sys-apps/xdg-desktop-portal-gnome` — backend для screencasting: Niri
+  реализует mutter ScreenCast D-Bus API, и этот путь обслуживает
   GNOME-бэкенд.
+- `oo7-portal` или `gnome-keyring` — Secret portal для приложений, которым он
+  нужен.
 
 `gui-libs/xdg-desktop-portal-wlr` для Niri не нужен: это бэкенд для
 композиторов на wlr-протоколах (wlr-screencopy), а Niri использует
 mutter-совместимый путь через GNOME-бэкенд.
 
-## Backend routing (portals.conf)
+## Upstream Niri baseline
 
-Кто какой интерфейс обслуживает, задаётся в `portals.conf`. Имя файла
-выбирается по `XDG_CURRENT_DESKTOP`: для Niri это `niri`, поэтому файл
-называется `~/.config/xdg-desktop-portal/niri-portals.conf`.
+Кто какой интерфейс обслуживает, задаётся в `portals.conf`. Niri поставляет
+свой baseline `niri-portals.conf`:
 
 ```ini
 [preferred]
-# Fallback для интерфейсов без явного правила
+default=gnome;gtk;
+org.freedesktop.impl.portal.Access=gtk;
+org.freedesktop.impl.portal.Notification=gtk;
+org.freedesktop.impl.portal.Secret=oo7-portal;gnome-keyring;
+```
+
+Отдельные строки важны: Notification и Secret — самостоятельные portal
+interfaces, а `Settings` отвечает за desktop/UI settings, например цветовую
+схему. `Settings` не маршрутизирует звук и не является Notification portal.
+
+Если используется upstream baseline с `xdg-desktop-portal-gnome`, для file
+chooser может понадобиться Nautilus. Если не хочется зависеть от GNOME/Nautilus
+file chooser, можно явно направить FileChooser в GTK-бэкенд.
+
+## Local overrides
+
+Локальная конфигурация может быть проще upstream baseline, если установленный
+набор backend'ов и нужные приложения это покрывают. Имя файла выбирается по
+`XDG_CURRENT_DESKTOP`: для Niri это `niri`, поэтому пользовательский файл
+обычно называется `~/.config/xdg-desktop-portal/niri-portals.conf`.
+
+На ASUS B5402 допустим и сейчас используется такой override:
+
+```ini
+[preferred]
 default=gtk
-# Screencast и скриншоты — через GNOME-бэкенд
-org.freedesktop.impl.portal.ScreenCast=gnome
 org.freedesktop.impl.portal.Screenshot=gnome
-# Общие диалоги — GTK
+org.freedesktop.impl.portal.ScreenCast=gnome
 org.freedesktop.impl.portal.FileChooser=gtk
 org.freedesktop.impl.portal.AppChooser=gtk
-# Настройки внешнего вида для приложений
 org.freedesktop.impl.portal.Settings=gtk
+org.freedesktop.impl.portal.Secret=gnome-keyring
 ```
 
 - `default=gtk` — запасной вариант для интерфейсов, не перечисленных выше.
@@ -60,6 +83,13 @@ org.freedesktop.impl.portal.Settings=gtk
 - `Settings` — портал настроек рабочего стола (тёмная тема, цветовая схема
   и т.п.), который приложения читают; он не является маршрутизатором звука
   или уведомлений.
+- `FileChooser=gtk` особенно уместен, если пользователь не хочет зависеть от
+  GNOME/Nautilus file chooser.
+- На ASUS B5402 уже используется `gnome-keyring` как Secret portal backend.
+  `oo7-portal` — современная альтернатива; одновременно мигрировать эту машину
+  на него в рамках текущего audit не требуется.
+- Notifications обслуживаются отдельным interface
+  `org.freedesktop.impl.portal.Notification`.
 
 ## Session integration
 
@@ -108,3 +138,12 @@ systemctl --user status xdg-desktop-portal.service \
 - [Niri](niri.md) — запуск сессии.
 - [Рабочее окружение ASUS B5402](../systems/asus-b5402/desktop/environment.md)
   — фактическое состояние.
+
+## References
+
+- [Niri: `resources/niri-portals.conf`](https://github.com/niri-wm/niri/blob/main/resources/niri-portals.conf) —
+  upstream routing baseline.
+- [Niri: Important Software](https://github.com/niri-wm/niri/blob/main/docs/wiki/Important-Software.md) —
+  нужные portal backends и примечание про `FileChooser=gtk`.
+- [XDG Desktop Portal: `portals.conf`](https://flatpak.github.io/xdg-desktop-portal/docs/portals.conf.html) —
+  выбор backend для отдельных portal interfaces.

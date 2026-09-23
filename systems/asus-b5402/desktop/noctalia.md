@@ -2,7 +2,7 @@
 kind: system
 scope: system
 status: current
-last_verified: 2026-09-22
+last_verified: 2026-09-23
 verified_on: [asus-b5402]
 ---
 
@@ -15,12 +15,11 @@ verified_on: [asus-b5402]
 ## Current state
 
 - Установлен `gui-apps/noctalia-5.1.0` из репозитория `noctalia-overlay`.
-- `USE=jemalloc` — осознанная runtime memory-allocation policy для
+- USE включает `jemalloc` — осознанная runtime memory-allocation policy для
   long-running shell.
-- Основная конфигурация: `~/.config/noctalia/config.toml`.
-- Настройки, изменённые через GUI, сохраняются в
-  `~/.local/state/noctalia/settings.toml` и имеют приоритет выше основной
-  конфигурации.
+- Файл `~/.config/noctalia/config.toml` существует.
+- Файл `~/.local/state/noctalia/settings.toml` существует.
+- Содержимое обоих TOML-файлов в этом audit не проверялось.
 
 ## Package source
 
@@ -30,13 +29,14 @@ README `noctalia-overlay`. Оверлей отслеживает только с
 будущая автоматизация будет создавать Issue о новом релизе и не станет менять
 ebuild'ы или установленный пакет.
 
-Версия, репозиторий и USE подтверждены по VDB 2026-09-22.
+Версия, репозиторий и `USE=jemalloc` подтверждены 2026-09-23.
 
 ## Configuration
 
-Конфигурация разделена на два уровня: основная —
-`~/.config/noctalia/config.toml`, а изменения, сделанные через GUI,
-сохраняются в `~/.local/state/noctalia/settings.toml` и перекрывают основную.
+На системе присутствуют `~/.config/noctalia/config.toml` и
+`~/.local/state/noctalia/settings.toml`. Общая модель конфигурации описана в
+руководстве по Noctalia; проверка 2026-09-23 подтвердила только наличие файлов,
+но не их содержимое.
 
 ## Keyword-политика
 
@@ -65,7 +65,8 @@ noctalia-overlay
 ```
 
 Проверка подтверждает версию бинарника и репозиторий установленного пакета. Она
-не проверяет содержимое пользовательской TOML-конфигурации.
+не проверяет содержимое пользовательской TOML-конфигурации; в аудите
+2026-09-23 подтверждено только наличие `config.toml` и `settings.toml`.
 
 ## History
 
