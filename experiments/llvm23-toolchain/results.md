@@ -8,11 +8,21 @@ verified_on: [asus-b5402]
 
 # Журнал эксперимента: LLVM 23 toolchain
 
-Живой журнал по гейтам. Для каждого гейта фиксируются: дата, исходная
-конфигурация, точная изменяемая переменная, команды, релевантный вывод,
-PASS/FAIL, что доказано, что НЕ доказано, rollback и следующий минимальный
-gate. Build logs целиком не копируются — только воспроизводимые команды и
-существенные результаты.
+Это канонический хронологический журнал LLVM 23 experiment. Для каждого гейта
+здесь фиксируются дата, исходная конфигурация, точная изменяемая переменная,
+команды, релевантный вывод, PASS/FAIL, evidence, ограничения, rollback и
+следующий минимальный gate. Build logs целиком не копируются — только
+воспроизводимые команды и существенные результаты.
+
+Зафиксированный итог журнала: Experiment A — COMPLETE, Experiment B —
+COMPLETE, Experiment C — NOT STARTED. Optimization policy применена, полный
+rebuild завершён; limited LLVM 23 rollout на последнем checkpoint этого
+журнала ещё NOT STARTED.
+
+Experiment record хранится здесь. Текущее production-состояние машины
+описывается отдельно в
+[`../../systems/asus-b5402/system/boot-and-portage.md`](../../systems/asus-b5402/system/boot-and-portage.md);
+исторические значения ниже не являются inventory текущей системы.
 
 Нумерация: A — LLVM 22→23 (compatibility), B — -O2 vs -O3 (optimization),
 C — runtimes. План — в [README.md](README.md), ментальная модель слоёв — в
@@ -23,7 +33,7 @@ C — runtimes. План — в [README.md](README.md), ментальная м�
 
 | Эксперимент | Вопрос | Статус |
 |-------------|--------|--------|
-| A — LLVM 22 → 23 | совместимость Clang/LLD 23 с текущей runtime-архитектурой | **COMPLETE** |
+| A — LLVM 22 → 23 | совместимость Clang/LLD 23 с runtime-архитектурой baseline экспериментального периода | **COMPLETE** |
 | B — -O2 vs -O3 | выбор глобального optimization baseline | **COMPLETE** |
 | C — runtimes | `libgcc → compiler-rt`, `libgcc_s → libunwind` | NOT STARTED |
 
@@ -43,6 +53,9 @@ B1 — benchmark result, а не validation gate: для O2/O3 статус «PA
 используется.
 
 ## Gate A0 — baseline
+
+> **Исторический baseline, зафиксированный 2026-09-20**: раздел описывает
+> состояние на дату начала эксперимента, а не текущий inventory машины.
 
 - **Дата**: 2026-09-20.
 - **Изменяемая переменная**: нет. Фиксация состояния и сверка документации с
@@ -277,9 +290,9 @@ bss  = 4496
 ### Будущий audit item
 
 `RUSTFLAGS` внутри env-файла `no-lto-llvm` содержит hardcoded
-`/usr/lib/llvm/22/bin/clang`. Сейчас не исправлять: для `libunistring` Rust
-не участвует, правка env-файла — отдельное изменение живой системы вне рамок
-гейта. Проверить при следующем аудите `/etc/portage`.
+`/usr/lib/llvm/22/bin/clang`. На момент Gate A2 это намеренно не исправлялось:
+для `libunistring` Rust не участвует, правка env-файла — отдельное изменение
+живой системы вне рамок гейта. Проверить при следующем аудите `/etc/portage`.
 
 ### Rollback/остаточные изменения
 
@@ -491,7 +504,8 @@ binpkg:        BUILD_TIME = 1789908603 (2026-09-20 15:50:03 +03)
 → значения различаются, замены установленной Mesa не было
 ```
 
-Наблюдение к следующему аудиту: `/etc/portage/env/` содержит 7 файлов
+**Наблюдение на checkpoint Gate A4 (2026-09-20)**: в `/etc/portage/env/`
+зафиксированы 7 файлов
 (`bfd gcc-fallback kernel-llvm no-ccache no-lto-llvm p-cores ssd`) — это
 расходится и со старым списком из `boot-and-portage.md` (11 имён, состояние
 2026-09-12), и с CHECKPOINT (8 файлов, аудит 2026-09-14). Временных
@@ -521,11 +535,11 @@ Rollback тривиален: удалить binpkg одной командой �
 
 Вопрос эксперимента A:
 
-> Можно ли использовать Clang/LLD 23 на текущей Gentoo-системе, не меняя
-> одновременно libc++, compiler-rt, libunwind и остальную runtime
-> architecture?
+> Можно ли использовать Clang/LLD 23 на baseline-системе экспериментального
+> периода, не меняя одновременно libc++, compiler-rt, libunwind и остальную
+> runtime architecture?
 
-Ответ по текущим тестам:
+Ответ по тестам этого baseline:
 
 ```text
 YES — для протестированных классов пакетов.
@@ -541,8 +555,8 @@ YES — для протестированных классов пакетов.
 Вывод:
 
 > Experiment A показал, что Clang/LLD 23 собирает несколько существенно
-> разных классов пакетов на этой машине, сохраняя текущую GNU C++
-> runtime-архитектуру и — где применимо — зависимости от LLVM 22.
+> разных классов пакетов на этой машине, сохраняя baseline GNU C++
+> runtime architecture и — где применимо — зависимости от LLVM 22.
 
 Ограничения scope:
 
@@ -587,8 +601,8 @@ O3 libde265 .text ≈ 12.3% больше
 
 Интерпретация: B1 усиливает гипотезу `global -O2 + selective -O3`, но одного
 codec workload недостаточно для смены глобальной optimization policy.
-Изменений в `make.conf`, `package.env` и production-политике не сделано;
-package-specific `-O3` rule для libde265 не создан.
+На checkpoint B1 изменений в `make.conf`, `package.env` и production-политике
+ещё не было; package-specific `-O3` rule для libde265 не был создан.
 
 ### B2 — zstd controlled A/B: COMPLETE
 
@@ -610,7 +624,8 @@ O3 decompression ≈ 1–2% медленнее
 основной библиотеки, улучшив один hot path и ухудшив другой. Отсюда: даже
 package-specific `-O3` не выбирается автоматически по признаку
 «performance-sensitive»-пакета; optimization level оценивается по реальному
-workload mix и измеренному trade-off. Production-политика не менялась.
+workload mix и измеренному trade-off. На checkpoint B2 production-политика
+ещё не менялась.
 
 ### B3 — OpenSSL controlled A/B: COMPLETE
 
@@ -799,9 +814,9 @@ benchmark'ом по канонической методике
 - **Результат**: все 102 overrides удалены; `env/no-lto-llvm`,
   `env/no-ccache` (после исчезновения последнего потребителя) и
   `package.env/20-compatibility` удалены; `media-libs/mesa` — только `ssd`
-  в `10-performance`. Структура теперь: `env/` — `gcc-fallback`,
-  `kernel-llvm`, `p-cores`, `ssd`; `package.env/` — `00-toolchain`,
-  `10-performance`, `30-gcc-fallback`.
+  в `10-performance`. Итоговая структура на cleanup checkpoint 2026-09-21:
+  `env/` — `gcc-fallback`, `kernel-llvm`, `p-cores`, `ssd`; `package.env/` —
+  `00-toolchain`, `10-performance`, `30-gcc-fallback`.
 
 Доказано: локальный compatibility blacklist `no-lto-llvm` больше не
 требуется — все 102 overrides оказались не нужны (для части пакетов ebuild
@@ -836,9 +851,9 @@ NM/iwd). Зафиксированы в системной документаци
 ### Decision gate: env/llvm-23 — после optimization policy decision
 
 Блокировка Experiment B'ом снята: исследование завершено, optimization policy
-выбрана. Создание постоянной LLVM 23 package policy (`env/llvm-23`,
-назначение через `package.env`) и применение `-O2` — следующие controlled
-шаги, каждый отдельным решением владельца:
+выбрана, применена и проверена полным rebuild. Следующий незавершённый
+controlled step на этом checkpoint — limited `env/llvm-23` pilot. Постоянное
+назначение LLVM 23 через `package.env` остаётся отдельным решением владельца:
 
 ```text
 Experiment A — LLVM 23 compatibility — COMPLETE
@@ -862,3 +877,12 @@ NOT STARTED
 Порядок сохраняется: сначала применяется optimization policy, затем
 начинается controlled LLVM 23 rollout — не одновременно. Experiment C
 (`compiler-rt + libunwind`) — NOT STARTED.
+
+## Связанные записи
+
+- [README.md](README.md) — overview и status эксперимента;
+- [toolchain-primer.md](toolchain-primer.md) — conceptual model;
+- [optimization-o2-o3.md](optimization-o2-o3.md) — decision record;
+- [benchmark-methodology.md](benchmark-methodology.md) — canonical methodology;
+- [o2-o3-benchmarks.md](o2-o3-benchmarks.md) — raw/derived benchmark record;
+- [`../../systems/asus-b5402/system/boot-and-portage.md`](../../systems/asus-b5402/system/boot-and-portage.md) — current system source of truth.
