@@ -137,6 +137,18 @@ emerge -av app-admin/chezmoi
 chezmoi init --apply https://github.com/vovanbl411/dotfiles
 ```
 
+## Сайт документации
+
+Сайт собирается на Astro + Starlight и публикуется через GitHub Pages после
+push в `gh-pages`. Исходные Markdown-файлы остаются в текущей структуре репозитория;
+перед сборкой они синхронизируются в generated-каталог.
+
+```bash
+npm install
+npm run dev
+npm run build
+```
+
 ## О репозитории
 
 - [Политика документации](DOCUMENTATION_POLICY.md) разделяет общие
