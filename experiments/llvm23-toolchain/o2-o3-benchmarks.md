@@ -8,13 +8,27 @@ verified_on: [asus-b5402]
 
 # Бенчмарки -O2 vs -O3 (Experiment B)
 
-Методология и результаты измерений Experiment B. Канонические правила
-проведения бенчмарков — в [benchmark-methodology.md](benchmark-methodology.md);
-гипотеза, дизайн A/B и критерий решения — в
-[optimization-o2-o3.md](optimization-o2-o3.md); журнал — в
-[results.md](results.md). Статусы: B1–B4, финальный review и optimization
-policy decision — COMPLETE; production rollout принятой политики — NOT
-STARTED.
+Это measurement record Experiment B: здесь сохранены первичные данные,
+derived metrics, методические примечания и ограничения B1–B4.
+
+> **Статус**:
+>
+> - B1–B4 — COMPLETE;
+> - final review — COMPLETE;
+> - optimization policy decision — COMPLETE;
+> - policy применена к `/etc/portage` 2026-09-20;
+> - полный rebuild `@world` под `-O2` завершён 2026-09-21;
+> - post-rebuild boot/runtime проверены.
+
+Границы источников правды:
+
+- текущее production-состояние системы — в
+  [`../../systems/asus-b5402/system/boot-and-portage.md`](../../systems/asus-b5402/system/boot-and-portage.md);
+- подробный decision record — в
+  [optimization-o2-o3.md](optimization-o2-o3.md);
+- каноническая методика — в
+  [benchmark-methodology.md](benchmark-methodology.md);
+- gate journal — в [results.md](results.md).
 
 B1–B4 — это benchmark results, а не validation gates. «PASS» здесь не
 используется: ни один optimization level не является «успехом теста».
@@ -32,8 +46,8 @@ policy (ThinLTO в B1/B2, без LTO в B3/B4), libstdc++/libgcc/libgcc_s, ве�
   система не затрагивается.
 - Toolchain вызывается только absolute paths слота 23
   (`/usr/lib/llvm/23/bin/...`).
-- Постоянный `env/llvm-23` не создаётся: rollout отложен до решения по
-  optimization baseline.
+- На design/checkpoint-этапе до rollout decision постоянный `env/llvm-23` не
+  создавался: rollout был отложен до решения по optimization baseline.
 
 ## 3. Методология runtime-измерений (B1)
 
@@ -201,10 +215,11 @@ B1 усиливает гипотезу `global -O2 + selective -O3`: на comput
 footprint. Но одного codec workload недостаточно, чтобы менять глобальную
 optimization policy всей системы.
 
-Изменений в `make.conf`, `package.env` и production-политике не сделано;
-package-specific `-O3` rule для libde265 не создан — это пока только
-experimental result. Выбор пакетов следующих гейтов — за владельцем
-(критерии — в [optimization-o2-o3.md](optimization-o2-o3.md)).
+На checkpoint после B1 изменений в `make.conf`, `package.env` и
+production-политике не было; package-specific `-O3` rule для libde265 не был
+создан — на том этапе это был только experimental result. Выбор пакетов
+следующих гейтов оставался за владельцем (критерии — в
+[optimization-o2-o3.md](optimization-o2-o3.md)).
 
 ## 5. B2 — app-arch/zstd-1.5.7-r1
 
@@ -871,5 +886,6 @@ microbenchmark.
 применено к `/etc/portage` — глобальный baseline теперь `-O2`
 (`make.conf` и env-файлы переведены, resolver рассчитывается); полный
 rebuild `@world` под `-O2` завершён 2026-09-21 (post-rebuild boot/runtime
-проверены). Selective rules не созданы,
-`env/llvm-23` не существует.
+проверены). Selective rules не созданы. На зафиксированном в этом отчёте
+checkpoint `env/llvm-23` не существовал; это историческое состояние
+эксперимента, а не утверждение о текущей системе.

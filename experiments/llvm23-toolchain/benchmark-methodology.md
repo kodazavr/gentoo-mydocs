@@ -8,11 +8,14 @@ verified_on: [asus-b5402]
 
 # Методика optimization-бенчмарков (Experiment B)
 
-Канонические правила для A/B-сравнений `-O2` vs `-O3`. Методика фиксируется
-заранее и не меняется после получения результатов — следующий benchmark
-проводится по тем же правилам. Гипотеза и критерий решения — в
-[optimization-o2-o3.md](optimization-o2-o3.md); данные измерений — в
-[o2-o3-benchmarks.md](o2-o3-benchmarks.md); журнал — в
+Это каноническая методика Experiment B для A/B-сравнений `-O2` vs `-O3`.
+Правила были зафиксированы до интерпретации результатов и не менялись после
+получения данных. B1–B4 завершены, а документ остаётся reference-записью о
+том, как были получены результаты.
+
+Фактические данные находятся в
+[o2-o3-benchmarks.md](o2-o3-benchmarks.md), подробный decision record — в
+[optimization-o2-o3.md](optimization-o2-o3.md), gate journal — в
 [results.md](results.md).
 
 ## 0. Разделение фактов и выводов
@@ -26,7 +29,8 @@ interpretation — качественные выводы из derived metrics с
 decision       — изменение production policy; отдельный шаг владельца
 ```
 
-Пример:
+Пример, зафиксированный до production rollout и оставленный без
+ретроспективного обновления:
 
 ```text
 FACT:          O3 libcrypto .text +2.62%
@@ -185,3 +189,10 @@ trade-off скорость / code size / стабильность для кон�
 - Рост `.text` создаёт потенциальный instruction-cache trade-off, но без
   прямой изоляции i-cache эффектов причинная связь «O3 медленнее из-за
   i-cache» не утверждается.
+
+## Связанные записи
+
+- [Decision record: `optimization-o2-o3.md`](optimization-o2-o3.md)
+- [Measurement record: `o2-o3-benchmarks.md`](o2-o3-benchmarks.md)
+- [Gate journal: `results.md`](results.md)
+- [Обзор эксперимента: `README.md`](README.md)

@@ -188,8 +188,8 @@ crypto, desktop/graphics):
 [o2-o3-benchmarks.md](o2-o3-benchmarks.md).
 
 Политика применена к `/etc/portage` 2026-09-20: `make.conf` и env-файлы
-переведены на `-O2`, resolver-проверка прошла успешно; полный rebuild `@world`
-под `-O2` завершён 2026-09-21 (post-rebuild boot/runtime проверены).
+переведены на `-O2`, resolver рассчитывается; полный rebuild `@world` под
+`-O2` завершён 2026-09-21 (post-rebuild boot/runtime проверены).
 Selective `-O3` rules не созданы. На этом checkpoint `env/llvm-23` не
 существовал; это состояние experiment checkpoint, а не утверждение о текущей
 системе.
@@ -232,9 +232,9 @@ weak/questionable (~1.2% за ~12.3% `.text`), zstd — смешанный ре�
 OpenSSL и Mesa — без преимущества.
 
 > Решение применено 2026-09-20: `make.conf` и env-файлы переведены на `-O2`,
-> resolver-проверка прошла успешно. Полный `@world` rebuild под `-O2`
-> завершён 2026-09-21; на этом checkpoint LLVM 23 rollout оставался следующим
-> controlled шагом (NOT STARTED).
+> resolver рассчитывается. Полный `@world` rebuild под `-O2` завершён
+> 2026-09-21; на этом checkpoint LLVM 23 rollout оставался следующим controlled
+> шагом (NOT STARTED).
 
 ## Related records
 
