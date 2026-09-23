@@ -1,3 +1,11 @@
+---
+kind: troubleshooting
+scope: general
+status: draft
+last_verified: null
+verified_on: []
+---
+
 # Подключение Android-телефона через USB к Gentoo Linux
 
 ## Что такое MTP и зачем он нужен?

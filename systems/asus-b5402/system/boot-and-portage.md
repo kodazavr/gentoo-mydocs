@@ -120,8 +120,10 @@ systemd-boot → UKI (Dracut) → LUKS2 (TPM2) → Btrfs (@)
 - `bootctl list` (2026-09-22): текущая загрузка — `gentoo-7.2.7-bdsm.efi`
   (selected); в ESP также `gentoo-7.2.6-bdsm.efi`, `gentoo-7.2.2-bdsm.efi` и
   Arch UKI (`arch-linux-cachyos.efi` — default, `arch-linux.efi`).
-- Secure Boot и автоматическая TPM2-разблокировка LUKS проверены успешной
-  перезагрузкой (последняя проверка после пересборки UKI — 2026-09-10).
+- Secure Boot и наличие корректно подписанных boot artifacts проверены
+  2026-09-22.
+- Автоматическая TPM2-разблокировка LUKS последний раз подтверждена реальной
+  успешной загрузкой 2026-09-14; 2026-09-22 её повторно не тестировали.
 - AppArmor: в cmdline используется `apparmor=1` и
   `lsm=landlock,lockdown,yama,integrity,apparmor,bpf`; устаревший
   `security=apparmor` удалён. В runtime AppArmor присутствует в активном
@@ -313,7 +315,8 @@ Review 2026-09-22 завершён. Он закрыл только перечи�
 
 | Раздел | Проверено |
 |--------|-----------|
-| Загрузочная цепочка (Secure Boot, TPM2) | 2026-09-10 |
+| Secure Boot и подписи boot artifacts | 2026-09-22 |
+| TPM2 auto-unlock LUKS (реальная загрузка) | 2026-09-14 |
 | Toolchain и package.env | 2026-09-20…21 |
 | Package policy (`package.use/`) | 2026-09-12 |
 | USE-policy review | 2026-09-22 |

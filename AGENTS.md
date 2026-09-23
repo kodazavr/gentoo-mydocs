@@ -54,6 +54,7 @@
 │   └── secure-boot-tpm.md    # sbctl, Secure Boot, TPM2 + LUKS2
 │
 ├── desktop/                  # Рабочее окружение
+│   ├── default-applications.md
 │   ├── niri.md               # Конфиг Niri (KDL), greetd/tuigreet
 │   ├── noctalia-shell.md     # Noctalia v5 для Niri
 │   └── wayland-portals.md    # XDG Desktop Portals
@@ -81,14 +82,16 @@
 │   └── portage.md            # Большое руководство по Portage
 │
 ├── settings/                 # Прикладные настройки
-│   ├── connect-phone-android.md
 │   ├── firefox.md
 │   ├── perplexity.md         # Интеграция Perplexity AppImage
 │   ├── flatpak.md
 │   ├── gtk.md
 │   ├── obs-studio.md
-│   ├── r2modman.md
-│   └── scanner-driver.md
+│   └── r2modman.md
+│
+├── experiments/              # Незавершённые исследования и проверки
+│   ├── llvm23-toolchain/
+│   └── elan-fingerprint-04f3-0c77/
 │
 ├── systems/                  # Состояние эталонных систем
 │   └── asus-b5402/
@@ -102,8 +105,10 @@
 │       └── system/
 │
 ├── troubleshooting/          # Повторяемые решения проблем
+│   ├── android-usb-mtp.md
 │   ├── docker-29-iptables-missing.md
 │   ├── docker-libvirt-nftables.md
+│   ├── luks-tpm2-unlock-after-uki-rebuild.md
 │   └── networkmanager-iwd-mac-randomization.md
 │
 ├── archive/                  # Исторические материалы, не для применения

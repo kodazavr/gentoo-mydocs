@@ -112,17 +112,16 @@ Clang/LLD, systemd-boot + UKI, Btrfs + Snapper, Secure Boot + TPM2.
 |--------|----------|
 | [settings/gtk](settings/gtk.md) | Настройка GTK4 тем для Niri |
 | [settings/r2modman](settings/r2modman.md) | Интеграция r2modman со Steam (Flatpak) |
-| [settings/scanner-driver](settings/scanner-driver.md) | Настройка сканера отпечатков Elan 04f3:0c77 |
 | [settings/obs-studio](settings/obs-studio.md) | OBS Studio, FFmpeg и настройка кодеков |
 | [settings/perplexity](settings/perplexity.md) | Интеграция Perplexity AppImage в меню приложений |
 | [settings/firefox](settings/firefox.md) | Firefox: Clang, PGO, Wayland, Profile-sync-daemon |
 | [settings/flatpak](settings/flatpak.md) | Flatpak и Flatseal для изоляции приложений |
-| [settings/connect-phone-android](settings/connect-phone-android.md) | Проблема с подключением телефона для передачи данных |
 
 ### 🔍 Решение проблем
 
 | Раздел | Описание |
 |--------|----------|
+| [troubleshooting/android-usb-mtp](troubleshooting/android-usb-mtp.md) | Диагностика проблем USB/MTP при подключении Android-телефона |
 | [troubleshooting/docker-29-iptables-missing](troubleshooting/docker-29-iptables-missing.md) | Docker 29 не запускается из-за отсутствия команды `iptables` |
 | [troubleshooting/docker-libvirt-nftables](troubleshooting/docker-libvirt-nftables.md) | Решение конфликта Docker и Libvirt в nftables |
 | [troubleshooting/networkmanager-iwd-mac-randomization](troubleshooting/networkmanager-iwd-mac-randomization.md) | MAC-рандомизация с NetworkManager и iwd |
