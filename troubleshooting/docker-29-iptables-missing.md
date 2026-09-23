@@ -8,7 +8,7 @@ verified_on: [asus-b5402]
 
 # Docker 29 не запускается: `iptables not found`
 
-## 1. Symptom
+## 1. Симптомы
 
 После обновления Go и пересборки Docker системный сервис завершался с ошибкой
 `start-limit-hit`:
